@@ -1,0 +1,13 @@
+name = "BaroclinicAdjustment"
+uuid = "2ba04c38-97e8-4ac2-88ab-325be645c0d7"
+authors = ["Simone Silvestri"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
