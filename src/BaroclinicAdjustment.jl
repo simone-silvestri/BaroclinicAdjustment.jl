@@ -58,9 +58,12 @@ function baroclinic_adjustment(resolution; horizontal_closure = nothing, momentu
     y₀ < y < y₀ + Δy => ramp = y / Δy
     y > y₀ + Δy      => ramp = 1
     """
+
+    gradient = "y"
+
     function ramp(λ, y, Δ)
         gradient == "x" && return min(max(0, λ / Δ + 1/2), 1)
-        gradient == "y" && return min(max(0, (y - 45) / Δ + 1/2), 1)
+        gradient == "y" && return min(max(0, (y - 55) / Δ + 1/2), 1)
     end
 
     # Parameters
