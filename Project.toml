@@ -5,6 +5,7 @@ version = "1.0.0-DEV"
 
 [deps]
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [compat]
 julia = "1"

@@ -6,8 +6,8 @@ using Oceananigans.Distributed
 
 function standard_outputs!(simulation, output_prefix; overwrite_existing = true, 
                                                       checkpoint_time    = 100days,
-                                                      snapshot_time      = 20days,
-                                                      surface_time       = 5days,
+                                                      snapshot_time      = 10days,
+                                                      surface_time       = 1days,
                                                       average_time       = 10days,
                                                       average_window     = average_time,
                                                       average_stride     = 10)
@@ -108,26 +108,3 @@ function reduced_outputs!(simulation, output_prefix; overwrite_existing = true,
 
 end                                                 
 
-import Oceananigans.OutputWriters: set_time_stepper_tendencies!
-
-function set_time_stepper_tendencies!(timestepper, file, model_fields)
-    for name in propertynames(model_fields)
-        # Tendency "n"
-        try
-            parent_data = file["timestepper/Gⁿ/$name/data"]
-
-            tendencyⁿ_field = timestepper.Gⁿ[name]
-            copyto!(tendencyⁿ_field.data.parent, parent_data)
-
-            # Tendency "n-1"
-            parent_data = file["timestepper/G⁻/$name/data"]
-
-            tendency⁻_field = timestepper.G⁻[name]
-            copyto!(tendency⁻_field.data.parent, parent_data)
-        catch
-            @warn "Could not restore $name tendency from checkpoint."
-        end
-    end
-
-    return nothing
-end

@@ -1,11 +1,9 @@
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: HorizontalFormulation
-using Oceananigans.Grids: min_Δx, min_Δy
 using Oceananigans.Operators
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, ℑxyᶜᶜᵃ, ζ₃ᶠᶠᶜ, div_xyᶜᶜᶜ
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.Operators: ℑxyz
-using CUDA: @allowscalar
 
 @inline Dₛ(i, j, k, grid, u, v) = ∂xᶜᶜᶜ(i, j, k, grid, u) - ∂yᶜᶜᶜ(i, j, k, grid, v)
 @inline Dₜ(i, j, k, grid, u, v) = ∂xᶠᶠᶜ(i, j, k, grid, v) + ∂yᶠᶠᶜ(i, j, k, grid, u)

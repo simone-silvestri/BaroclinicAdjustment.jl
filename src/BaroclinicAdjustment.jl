@@ -1,8 +1,10 @@
 module BaroclinicAdjustment
 
+using Printf
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans: getnamewrapper
+using Oceananigans.Utils: getnamewrapper
+using Oceananigans.Advection: VelocityStencil, DefaultStencil
 
 include("horizontal_visc.jl")
 include("outputs.jl")
@@ -128,12 +130,11 @@ function run_quarter_degree_simulations()
     hi1 = nothing
     hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
     hi3 = leith_viscosity(HorizontalFormulation())
-    hi3 = leith_laplacian_viscosity(HorizontalFormulation())
+    hi4 = leith_laplacian_viscosity(HorizontalFormulation())
     hi5 = smagorinski_viscosity(HorizontalFormulation())
 
     advection_schemes   = [vi1, vi1, vi1, vi1, vi2, vi3, vi4, vi5]
     horizontal_closures = [hi2, hi3, hi4, hi5, hi1, hi1, hi1, hi1]
-
 
     for (momentum_advection, horizontal_closure) in zip(advection_schemes, horizontal_closures)
         baroclinic_adjustment(1/4; momentum_advection, horizontal_closure)
