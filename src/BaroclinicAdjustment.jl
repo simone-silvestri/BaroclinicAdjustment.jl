@@ -1,10 +1,8 @@
 module BaroclinicAdjustment
 
-using Random
-using Oceananigans: getnamewrapper
-using Oceananigans.Units
-using GLMakie
 using Oceananigans
+using Oceananigans.Units
+using Oceananigans: getnamewrapper
 
 include("horizontal_visc.jl")
 include("outputs.jl")
