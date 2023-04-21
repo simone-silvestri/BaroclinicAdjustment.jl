@@ -3,21 +3,38 @@ module BaroclinicAdjustment
 using Printf
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: minimum_xspacing, minimum_yspacing
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Advection: VelocityStencil, DefaultStencil
 
 include("horizontal_visc.jl")
 include("outputs.jl")
 
-function baroclinic_adjustment(resolution; horizontal_closure = nothing, momentum_advection = VectorInvariant())
+function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.7)
+    wave_speed = sqrt(gravitational_acceleration * grid.Lz)
+  
+   return Int(ceil(2 * Δt / (CFL / wave_speed * local_Δ)))
+end
+
+function barotropic_substeps(Δt, grid, gravitational_acceleration)
+    wave_speed = sqrt(gravitational_acceleration * grid.Lz)
+    
+    Δx = minimum_xspacing(grid)
+    Δy = minimum_yspacing(grid)
+    Δ  = 1 / sqrt(1 / Δx^2 + 1 / Δy^2)
+
+    return  Base.Int(ceil(2 * Δt / (0.7 / wave_speed * Δ)))
+end
+    
+function baroclinic_adjustment(resolution, filename; horizontal_closure = nothing, momentum_advection = VectorInvariant())
 
     # Architecture
     arch = GPU()
     
     # Domain
     Lz = 1kilometers     # depth [m]
-    Ny = Int(10 / resolution)
-    Nz = 100
+    Ny = Base.Int(10 / resolution)
+    Nz = 50
     stop_time = 200days
     Δt = 10minutes
 
@@ -27,7 +44,7 @@ function baroclinic_adjustment(resolution; horizontal_closure = nothing, momentu
                                 longitude = (-5,   5),
                                 latitude = (-60, -50),
                                 z = (-Lz, 0),
-                                halo = (3, 3, 3))
+                                halo = (6, 6, 6))
 
     coriolis = HydrostaticSphericalCoriolis()
 
@@ -36,14 +53,19 @@ function baroclinic_adjustment(resolution; horizontal_closure = nothing, momentu
 
     closures = (vertical_closure, horizontal_closure)
 
+    substeps = barotropic_substeps(10minutes, grid, Oceananigans.BuoyancyModels.g_Earth)
+
+    @info "running with $substeps substeps"
+    free_surface = SplitExplicitFreeSurface(; substeps)
+
     @info "Building a model..."
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        coriolis = coriolis,
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                        coriolis,
                                         buoyancy = BuoyancyTracer(),
                                         closure = closures,
                                         tracers = :b,
-                                        momentum_advection = VectorInvariant(),
+                                        momentum_advection,
                                         tracer_advection = WENO(),
                                         free_surface = ImplicitFreeSurface())
 
@@ -63,7 +85,7 @@ function baroclinic_adjustment(resolution; horizontal_closure = nothing, momentu
 
     function ramp(λ, y, Δ)
         gradient == "x" && return min(max(0, λ / Δ + 1/2), 1)
-        gradient == "y" && return min(max(0, (y - 55) / Δ + 1/2), 1)
+        gradient == "y" && return min(max(0, (55 + y) / Δ + 1/2), 1)
     end
 
     # Parameters
@@ -108,9 +130,7 @@ function baroclinic_adjustment(resolution; horizontal_closure = nothing, momentu
 
     simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
-    filename = "experiment_$(viscosity_name(horizontal_closure))_$(advection_name(momentum_advection))"
-    
-    standard_outputs!(simulation, filename)
+    reduced_outputs!(simulation, filename)
 
     run!(simulation)
 
@@ -139,12 +159,43 @@ function run_quarter_degree_simulations()
     advection_schemes   = [vi1, vi1, vi1, vi1, vi2, vi3, vi4, vi5]
     horizontal_closures = [hi2, hi3, hi4, hi5, hi1, hi1, hi1, hi1]
 
-    for (momentum_advection, horizontal_closure) in zip(advection_schemes, horizontal_closures)
-        baroclinic_adjustment(1/4; momentum_advection, horizontal_closure)
+    names = ["bilap", "leith", "lapleith", "smag", "weno5vd", "weno5dd", "weno5vv", "weno9"]
+
+    for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
+        baroclinic_adjustment(1/4, name; momentum_advection, horizontal_closure)
     end
 
     return nothing
 end
 
+function run_eight_degree_simulations()
+
+    vi1 = VectorInvariant()
+    vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
+    vi3 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+    vi4 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), divergence_stencil = VelocityStencil())
+    vi5 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO())
+
+    hi1 = nothing
+    hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
+    hi3 = leith_viscosity(HorizontalFormulation())
+    hi4 = leith_laplacian_viscosity(HorizontalFormulation())
+    hi5 = smagorinski_viscosity(HorizontalFormulation())
+
+    advection_schemes   = [vi1, vi2, vi1, vi1, vi1, vi3, vi4, vi5]
+    horizontal_closures = [hi2, hi1, hi3, hi4, hi5, hi1, hi1, hi1]
+
+    names = ["bilap", "weno5vd", "leith", "lapleith", "smag","weno5dd", "weno5vv", "weno9"]
+
+    for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
+        baroclinic_adjustment(1/8, name; momentum_advection, horizontal_closure)
+    end
+
+    return nothing
+end
+
+include("Diagnostics/Diagnostics.jl")
+
+using .Diagnostics
 
 end

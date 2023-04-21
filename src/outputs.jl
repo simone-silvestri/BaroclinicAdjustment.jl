@@ -7,10 +7,7 @@ using Oceananigans.Distributed
 function standard_outputs!(simulation, output_prefix; overwrite_existing = true, 
                                                       checkpoint_time    = 100days,
                                                       snapshot_time      = 10days,
-                                                      surface_time       = 1days,
-                                                      average_time       = 10days,
-                                                      average_window     = average_time,
-                                                      average_stride     = 10)
+                                                      surface_time       = 1days)
 
     model = simulation.model
     grid  = model.grid
@@ -31,9 +28,9 @@ function standard_outputs!(simulation, output_prefix; overwrite_existing = true,
     ζ  = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
     ζ2 = ζ^2
 
-    averaged_fields = (; u, v, w, b, ζ, ζ2, u2, v2, w2, b2, ub, vb, wb)
+    snapshot_fields = (; u, v, w, b, ζ, ζ2, u2, v2, w2, b2, ub, vb, wb)
 
-    simulation.output_writers[:snapshots] = JLD2OutputWriter(model, output_fields;
+    simulation.output_writers[:snapshots] = JLD2OutputWriter(model, snapshot_fields;
                                                                   schedule = TimeInterval(snapshot_time),
                                                                   filename = output_prefix * "_snapshots",
                                                                   overwrite_existing)
@@ -43,11 +40,6 @@ function standard_outputs!(simulation, output_prefix; overwrite_existing = true,
                                                                   filename = output_prefix * "_surface",
                                                                   indices = (:, :, grid.Nz),
                                                                   overwrite_existing)
-
-    simulation.output_writers[:averaged_fields] = JLD2OutputWriter(model, averaged_fields;
-                                                                   schedule = AveragedTimeInterval(average_time, window=average_window, stride = average_stride),
-                                                                   filename = output_prefix * "_averages",
-                                                                   overwrite_existing)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model;
                                                             schedule = TimeInterval(checkpoint_time),
@@ -71,9 +63,9 @@ end
 
 function reduced_outputs!(simulation, output_prefix; overwrite_existing = true, 
                                                      checkpoint_time    = 100days,
-                                                     snapshot_time      = 30days,
-                                                     surface_time       = 1days,
-                                                     bottom_time        = 1days)
+                                                     snapshot_time      = 1days,
+                                                     surface_time       = 0.5days,
+                                                     bottom_time        = 0.5days)
 
     model = simulation.model
     grid  = model.grid

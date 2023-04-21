@@ -9,14 +9,15 @@ using Oceananigans.Operators: ℑxyz
 @inline Dₜ(i, j, k, grid, u, v) = ∂xᶠᶠᶜ(i, j, k, grid, v) + ∂yᶠᶠᶜ(i, j, k, grid, u)
 @inline Δ²ᵃᵃᵃ(i, j, k, grid, lx, ly, lz) =  (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))
 
+
 @inline function νhb_smagorinski_final(i, j, k, grid, lx, ly, lz, clock, fields, p)
 
    location = (lx, ly, lz)
    from_Dₛ = (Center(), Center(), Center()) 
    from_Dₜ = (Face(),   Face(),   Center()) 
 	
-   δ₁ = ℑxz(i, j, k, grid, from_Dₛ, location, Dₛ, fields.u, fields.v)    
-   δ₂ = ℑxz(i, j, k, grid, from_Dₜ, location, Dₛ, fields.u, fields.v)    
+   δ₁ = ℑxyz(i, j, k, grid, from_Dₛ, location, Dₛ, fields.u, fields.v)    
+   δ₂ = ℑxyz(i, j, k, grid, from_Dₜ, location, Dₛ, fields.u, fields.v)    
 
    dynamic_visc = p.C * sqrt(δ₁^2 + δ₂^2)
 
