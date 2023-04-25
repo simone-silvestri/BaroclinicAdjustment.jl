@@ -2,7 +2,6 @@ module Diagnostics
 
 export all_fieldtimeseries, limit_timeseries!, propagate_on_fieldtimeseries
 export VolumeField, AreaField, MetricField, KineticEnergyField, time_average
-export compute_spurious_mixing
 
 using Oceananigans
 using KernelAbstractions: @kernel, @index 

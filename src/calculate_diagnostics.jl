@@ -1,5 +1,10 @@
 using Statistics: mean
 
+using BaroclinicAdjustment.Diagnostics: compute_rpe_density, 
+                                        calculate_KE,
+                                        calculate_APE,
+                                        calculate_RPE
+
 add_trailing_name(name) = name * "_snapshots.jld2"
 
 function compute_spurious_mixing(f::Dict)
@@ -42,7 +47,7 @@ end
 
 function calculate_diagnostics()
     file_prefix = ["bilap", "weno5vd", "leith", "lapleith", 
-                   "smag", "weno5dd", "weno9", "weno9dd", 
+                   "smag", "weno5dd", "weno9",
                    "qgleith"]
     filenames = add_trailing_characters.(file_prefix)
     filenames = add_trailing_name.(filenames)
@@ -53,27 +58,18 @@ function calculate_diagnostics()
 
     for (prefix, filename) in zip(file_prefix, filenames)
         fields    = all_fieldtimeseries(filename)
-        fields    = add_kinetic_energy_and_vorticity_timeseries!(fields)
+        # fields    = add_kinetic_energy_and_vorticity_timeseries!(fields)
         energy    = compute_spurious_mixing(fields)
         zonalmean = compute_zonal_mean(fields)
-        spectra   = compute_spectra(fields)
+        # spectra   = compute_spectra(fields)
 
         energies[Symbol(prefix)] = energy
-        spectras[Symbol(prefix)] = spectra
+        # spectras[Symbol(prefix)] = spectra
         zonalmeans[Symbol(prefix)] = zonalmean
-    end
 
-    jldopen("energies.jld2","w") do f
-        for (key, value) in energies
-            f[string(key)] = value
-        end
+        jldsave("energies_"  * filename,"w") 
+        jldsave("zonalmean_" * filename,"w") 
     end
-
-    jldopen("zonalmeans.jld2","w") do f
-        for (key, value) in zonalmeans
-            f[string(key)] = value
-        end
-    end
-
+    
     return nothing
 end
