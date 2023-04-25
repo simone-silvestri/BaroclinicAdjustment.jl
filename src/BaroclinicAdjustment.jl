@@ -117,7 +117,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
                 maximum(abs, sim.model.velocities.u),
                 maximum(abs, sim.model.velocities.v),
                 maximum(abs, sim.model.velocities.w),
-                prettytime(sim.Δ))
+                prettytime(sim.Δt))
 
         wall_clock[1] = time_ns()
 

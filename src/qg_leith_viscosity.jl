@@ -7,7 +7,11 @@ using Oceananigans.TurbulenceClosures:
         tapering_factorᶜᶜᶠ,
         SmallSlopeIsopycnalTensor,
         AbstractScalarDiffusivity,
-        ExplicitTimeDiscretization
+        ExplicitTimeDiscretization,
+        FluxTapering,
+        isopycnal_rotation_tensor_xz_ccf,
+        isopycnal_rotation_tensor_yz_ccf,
+        isopycnal_rotation_tensor_zz_ccf
 
 import Oceananigans.TurbulenceClosures:
         calculate_diffusivities!,
@@ -25,13 +29,14 @@ using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
 
 using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxyzᶜᶜᶠ, ℑxzᶜᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ
 
-struct QGLeithViscosity{A, M} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
+struct QGLeithViscosity{A, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
     C :: A
-    isopycnal_model :: M
+    isopycnal_tensor :: M
+    slope_limiter :: S
 end
 
-QGLeithViscosity(; C=1.0, isopycnal_model=SmallSlopeIsopycnalTensor()) =
-    QGLeithViscosity(C, isopycnal_model)
+QGLeithViscosity(; C=1.0, isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
+    QGLeithViscosity(C, isopycnal_model, slope_limiter) 
 
 DiffusivityFields(grid, tracer_names, bcs, ::QGLeithViscosity) = 
                 (; νₑ = CenterField(grid), )
@@ -147,9 +152,9 @@ end
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
 
     ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, fields, buoyancy)
 
