@@ -88,7 +88,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
     M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-    Δy = 1 # degree
+    Δy = 5 # degree
     Δb = 100kilometers * Δy * M²
 
     bᵢ(λ, y, z) = N² * z + Δb * ramp(λ, y, Δy)
@@ -138,7 +138,7 @@ viscosity_name(clo::ScalarDiffusivity)           = typeof(clo.ν)
 viscosity_name(clo) = typeof(clo)
 advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
-add_trailing_characters(name) = name * "_larger"
+add_trailing_characters(name) = name * "_weaker"
 
 function run_eight_degree_simulations()
 
@@ -186,6 +186,11 @@ function run_high_res_simulation()
     end
 
     return nothing
+end
+
+function run_all()
+    run_eight_degree_simulations()
+    run_high_res_simulation()
 end
 
 include("Diagnostics/Diagnostics.jl")
