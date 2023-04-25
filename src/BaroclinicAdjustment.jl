@@ -140,42 +140,26 @@ advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
 add_trailing_characters(name) = name * "_larger"
 
-# function run_eight_degree_simulations()
-
-#     vi1 = VectorInvariant()
-#     vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
-#     vi3 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
-#     vi4 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), divergence_stencil = VelocityStencil())
-#     vi5 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO())
-
-#     hi1 = nothing
-#     hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
-#     hi3 = leith_viscosity(HorizontalFormulation())
-#     hi4 = leith_laplacian_viscosity(HorizontalFormulation())
-#     hi5 = smagorinski_viscosity(HorizontalFormulation())
-
-#     advection_schemes   = [vi1, vi2, vi1, vi1, vi1, vi3, vi4, vi5]
-#     horizontal_closures = [hi2, hi1, hi3, hi4, hi5, hi1, hi1, hi1]
-
-#     names = ["bilap", "weno5vd", "leith", "lapleith", "smag", "weno5dd", "weno5vv", "weno9"]
-#     names = add_trailing_characters.(names)
-    
-#     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-#         baroclinic_adjustment(1/8, name; momentum_advection, horizontal_closure)
-#     end
-
-#     return nothing
-# end
-
 function run_eight_degree_simulations()
 
+    vi1 = VectorInvariant()
+    vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
+    vi3 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+    vi4 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), divergence_stencil = VelocityStencil())
+    vi5 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO())
     vi6 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
-    hi1 = QGLeithViscosity()
 
-    advection_schemes   = [VectorInvariant(), vi6]
-    horizontal_closures = [hi1, nothing]
+    hi1 = nothing
+    hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
+    hi3 = leith_viscosity(HorizontalFormulation())
+    hi4 = leith_laplacian_viscosity(HorizontalFormulation())
+    hi5 = smagorinski_viscosity(HorizontalFormulation())
+    hi6 = QGLeithViscosity()
 
-    names = ["qgleith", "weno9dd"]
+    advection_schemes   = [vi1, vi2, vi1, vi1, vi1, vi3, vi4, vi5, vi1, vi6]
+    horizontal_closures = [hi2, hi1, hi3, hi4, hi5, hi1, hi1, hi1, hi6, hi1]
+
+    names = ["bilap", "weno5vd", "leith", "lapleith", "smag", "weno5dd", "weno5vv", "weno9", "qgleith", "weno9dd"]
     names = add_trailing_characters.(names)
     
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
