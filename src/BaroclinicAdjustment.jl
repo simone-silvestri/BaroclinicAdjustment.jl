@@ -192,42 +192,6 @@ include("Diagnostics/Diagnostics.jl")
 
 using .Diagnostics
 
-add_trailing_name(name) = name * "_snapshots.jld2"
-
-function calculate_diagnostics()
-    file_prefix = ["bilap", "weno5vd", "leith", "lapleith", 
-                   "smag", "weno5dd", "weno5vv", "weno9", "highres"]
-    filenames = add_trailing_characters.(file_prefix)
-    filenames = add_trailing_name.(filenames)
-
-    energies   = Dict()
-    spectras   = Dict()
-    zonalmeans = Dict()
-
-    for (prefix, filename) in zip(file_prefix, filenames)
-        fields    = all_fieldtimeseries(filename)
-        energy    = compute_spurious_mixing(fields)
-        zonalmean = compute_zonal_mean(fields)
-        # spectra = compute_spectra(fields)
-
-        energies[Symbol(prefix)] = energy
-        # spectras[Symbol(prefix)] = spectra
-        zonalmeans[Symbol(prefix)] = zonalmean
-    end
-
-    jldopen("energies.jld2","w") do f
-        for (key, value) in energies
-            f[string(key)] = value
-        end
-    end
-
-    jldopen("zonalmeans.jld2","w") do f
-        for (key, value) in zonalmeans
-            f[string(key)] = value
-        end
-    end
-
-    return nothing
-end
+include("calculate_diagnostics.jl")
 
 end

@@ -8,8 +8,6 @@ end
 @inline onefunc(args...)  = 1.0
 @inline hann_window(n, N) = sin(π * n / N)^2 
 
-# function compute_spectra(fields::Dict, )
-
 function average_spectra(var::FieldTimeSeries, xlim, ylim; k = 69, spectra = power_spectrum_1d_x, windowing = onefunc)
 
     xdomain = xnodes(var[1])[xlim]
