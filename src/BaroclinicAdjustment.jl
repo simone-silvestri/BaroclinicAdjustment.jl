@@ -24,7 +24,7 @@ include("outputs.jl")
     @inbounds begin
         u[i, j, 1] = Δzᶠᶜᶠ(i, j, 1, grid) * ∂z_uᴳ(i, j, 1, grid, b, coriolis)
         for k in 2:grid.Nz
-            u[i, j, k] = u[i, j, k -1] + Δzᶠᶜᶠ(i, j, k, grid) * ∂z_uᴳ(i, j, k, grid, b, coriolis)
+            u[i, j, k] = u[i, j, k-1] + Δzᶠᶜᶠ(i, j, k, grid) * ∂z_uᴳ(i, j, k, grid, b, coriolis)
         end
     end
 end
