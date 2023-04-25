@@ -3,14 +3,38 @@ module BaroclinicAdjustment
 using Printf
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.Grids: minimum_xspacing, minimum_yspacing
-using Oceananigans.Utils: getnamewrapper
+using Oceananigans.Grids: minimum_xspacing, minimum_yspacing, architecture
+using Oceananigans.Operators
+using Oceananigans.Utils: getnamewrapper, launch!
+using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.Advection: VelocityStencil, DefaultStencil
+using KernelAbstractions: @kernel, @index
 using JLD2
 
 include("horizontal_visc.jl")
 include("qg_leith_viscosity.jl")
 include("outputs.jl")
+
+
+@inline ∂z_uᴳ(i, j, k, grid, b, coriolis) = 1 / fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxyzᶠᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, b)
+
+@kernel function _geostrophic_velocity(u, b, grid, coriolis)
+    i, j = @index(Global, NTuple)
+
+    @inbounds begin
+        u[i, j, 1] = Δzᶠᶜᶠ(i, j, 1, grid) * ∂z_uᴳ(i, j, 1, grid, b, coriolis)
+        for k in 2:grid.Nz
+            u[i, j, k] = u[i, j, k -1] + Δzᶠᶜᶠ(i, j, k, grid) * ∂z_uᴳ(i, j, k, grid, b, coriolis)
+        end
+    end
+end
+
+function set_geostrophic_velocity!(u, b, coriolis)
+    grid = u.grid
+    launch!(architecture(grid), grid, :xy, u, b, grid, coriolis)
+
+    return nothing
+end
 
 function barotropic_substeps(Δt, grid, gravitational_acceleration)
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
@@ -86,14 +110,14 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
 
     # Parameters
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-    M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
     Δy = 1 # degree
-    Δb = 100kilometers * Δy * M²
+    Δb = 0.06
 
     bᵢ(λ, y, z) = N² * z + Δb * ramp(λ, y, Δy)
-    
+
     set!(model, b=bᵢ)
+    set_geostrophic_velocity!(model.velocities.u, model.tracers.b, model.coriolis)
 
     #####
     ##### Simulation building
