@@ -30,7 +30,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     # Domain
     Lz = 1kilometers     # depth [m]
     Ny = Base.Int(20 / resolution)
-    Nz = 50
+    Nz = 100
     stop_time = 200days
     Δt = 10minutes
 
@@ -86,10 +86,9 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
 
     # Parameters
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-    M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
     Δy = 5 # degree
-    Δb = 100kilometers * Δy * M²
+    Δb = 0.06
 
     bᵢ(λ, y, z) = N² * z + Δb * ramp(λ, y, Δy)
     
