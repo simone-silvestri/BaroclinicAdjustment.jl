@@ -32,7 +32,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     Ny = Base.Int(20 / resolution)
     Nz = 100
     stop_time = 200days
-    Δt = 10minutes
+    Δt = 5minutes
 
     grid = LatitudeLongitudeGrid(arch;
                                 topology = (Periodic, Bounded, Bounded),
@@ -45,7 +45,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     coriolis = HydrostaticSphericalCoriolis()
 
     Δy = 1000kilometers / Ny
-    vertical_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-6)
+    vertical_closure = VerticalScalarDiffusivity(ν=1e-4, κ=1e-5)
 
     closures = (vertical_closure, horizontal_closure)
 
