@@ -14,7 +14,7 @@ function HeightField(grid, loc = (Center, Center, Center))
     zf = Field(loc, grid)
 
     for k in 1:size(zf, 3)
-        interior(zf, :, :, k) .= znode(loc[3](), k, grid)
+        interior(zf, :, :, k) .= znode(k, grid, loc[3]())
     end
 
     return zf

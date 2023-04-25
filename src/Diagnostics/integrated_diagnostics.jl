@@ -100,7 +100,7 @@ function add_kinetic_energy_from_timeseries!(fields::Dict, iterations = 1:length
     for (i, t) in enumerate(iterations)
         u2 = fields[:u2][t]
         v2 = fields[:v2][t]
-        set!(E[i], compute!(Field(@at (Center, Center, Center) 0.5 * (u2 + v2))))
+        set!(E[i], @at (Center, Center, Center) 0.5 * (u2 + v2))
     end
 
     fields[:E] = E
@@ -217,7 +217,7 @@ function calculate_fluctuations!(fields::Dict, variables)
         field_fluc = FieldTimeSeries{location(fields[var])...}(fields[var].grid, fields[var].times)
 
         for t in 1:length(fields[var].times)
-            fluc = compute!(Field(fields[var][t] - field_avg))
+            fluc = fields[var][t] - field_avg
             set!(field_fluc[t], fluc)
         end
 

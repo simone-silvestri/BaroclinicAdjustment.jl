@@ -6,15 +6,11 @@ using Oceananigans.Units
 using Oceananigans.Grids: minimum_xspacing, minimum_yspacing
 using Oceananigans.Utils: getnamewrapper
 using Oceananigans.Advection: VelocityStencil, DefaultStencil
+using JLD2
 
 include("horizontal_visc.jl")
+include("qg_leith_viscosity.jl")
 include("outputs.jl")
-
-function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.7)
-    wave_speed = sqrt(gravitational_acceleration * grid.Lz)
-  
-   return Int(ceil(2 * Δt / (CFL / wave_speed * local_Δ)))
-end
 
 function barotropic_substeps(Δt, grid, gravitational_acceleration)
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
@@ -33,7 +29,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     
     # Domain
     Lz = 1kilometers     # depth [m]
-    Ny = Base.Int(10 / resolution)
+    Ny = Base.Int(20 / resolution)
     Nz = 50
     stop_time = 200days
     Δt = 10minutes
@@ -41,15 +37,15 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     grid = LatitudeLongitudeGrid(arch;
                                 topology = (Periodic, Bounded, Bounded),
                                 size = (Ny, Ny, Nz), 
-                                longitude = (-5,   5),
-                                latitude = (-60, -50),
+                                longitude = (-10, 10),
+                                latitude = (-60, -40),
                                 z = (-Lz, 0),
                                 halo = (6, 6, 6))
 
     coriolis = HydrostaticSphericalCoriolis()
 
     Δy = 1000kilometers / Ny
-    vertical_closure = VerticalScalarDiffusivity(ν=1e-4, κ=1e-5)
+    vertical_closure = VerticalScalarDiffusivity(ν=1e-5, κ=1e-6)
 
     closures = (vertical_closure, horizontal_closure)
 
@@ -85,7 +81,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
 
     function ramp(λ, y, Δ)
         gradient == "x" && return min(max(0, λ / Δ + 1/2), 1)
-        gradient == "y" && return min(max(0, (55 + y) / Δ + 1/2), 1)
+        gradient == "y" && return min(max(0, (50 + y) / Δ + 1/2), 1)
     end
 
     # Parameters
@@ -121,7 +117,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
                 maximum(abs, sim.model.velocities.u),
                 maximum(abs, sim.model.velocities.v),
                 maximum(abs, sim.model.velocities.w),
-                prettytime(sim.Δt))
+                prettytime(sim.Δ))
 
         wall_clock[1] = time_ns()
 
@@ -142,53 +138,67 @@ viscosity_name(clo::ScalarDiffusivity)           = typeof(clo.ν)
 viscosity_name(clo) = typeof(clo)
 advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
-function run_quarter_degree_simulations()
+add_trailing_characters(name) = name * "_larger"
 
-    vi1 = VectorInvariant()
-    vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
-    vi3 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
-    vi4 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), divergence_stencil = VelocityStencil())
-    vi5 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO())
+# function run_eight_degree_simulations()
 
-    hi1 = nothing
-    hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
-    hi3 = leith_viscosity(HorizontalFormulation())
-    hi4 = leith_laplacian_viscosity(HorizontalFormulation())
-    hi5 = smagorinski_viscosity(HorizontalFormulation())
+#     vi1 = VectorInvariant()
+#     vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
+#     vi3 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+#     vi4 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), divergence_stencil = VelocityStencil())
+#     vi5 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO())
 
-    advection_schemes   = [vi1, vi1, vi1, vi1, vi2, vi3, vi4, vi5]
-    horizontal_closures = [hi2, hi3, hi4, hi5, hi1, hi1, hi1, hi1]
+#     hi1 = nothing
+#     hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
+#     hi3 = leith_viscosity(HorizontalFormulation())
+#     hi4 = leith_laplacian_viscosity(HorizontalFormulation())
+#     hi5 = smagorinski_viscosity(HorizontalFormulation())
 
-    names = ["bilap", "leith", "lapleith", "smag", "weno5vd", "weno5dd", "weno5vv", "weno9"]
+#     advection_schemes   = [vi1, vi2, vi1, vi1, vi1, vi3, vi4, vi5]
+#     horizontal_closures = [hi2, hi1, hi3, hi4, hi5, hi1, hi1, hi1]
 
+#     names = ["bilap", "weno5vd", "leith", "lapleith", "smag", "weno5dd", "weno5vv", "weno9"]
+#     names = add_trailing_characters.(names)
+    
+#     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
+#         baroclinic_adjustment(1/8, name; momentum_advection, horizontal_closure)
+#     end
+
+#     return nothing
+# end
+
+function run_eight_degree_simulations()
+
+    vi6 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+    hi1 = QGLeithViscosity()
+
+    advection_schemes   = [VectorInvariant(), vi6]
+    horizontal_closures = [hi1, nothing]
+
+    names = ["qgleith", "weno9dd"]
+    names = add_trailing_characters.(names)
+    
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-        baroclinic_adjustment(1/4, name; momentum_advection, horizontal_closure)
+        baroclinic_adjustment(1/8, name; momentum_advection, horizontal_closure)
     end
 
     return nothing
 end
 
-function run_eight_degree_simulations()
+function run_high_res_simulation()
 
     vi1 = VectorInvariant()
-    vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
-    vi3 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
-    vi4 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), divergence_stencil = VelocityStencil())
-    vi5 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO())
 
-    hi1 = nothing
-    hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
-    hi3 = leith_viscosity(HorizontalFormulation())
-    hi4 = leith_laplacian_viscosity(HorizontalFormulation())
-    hi5 = smagorinski_viscosity(HorizontalFormulation())
+    hi4 = leith_laplacian_viscosity(HorizontalFormulation(), C_vort = 2.0, C_div = 2.0)
 
-    advection_schemes   = [vi1, vi2, vi1, vi1, vi1, vi3, vi4, vi5]
-    horizontal_closures = [hi2, hi1, hi3, hi4, hi5, hi1, hi1, hi1]
+    advection_schemes   = [vi1]
+    horizontal_closures = [hi4]
 
-    names = ["bilap", "weno5vd", "leith", "lapleith", "smag","weno5dd", "weno5vv", "weno9"]
+    names = ["highres"]
+    names = add_trailing_characters.(names)
 
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-        baroclinic_adjustment(1/8, name; momentum_advection, horizontal_closure)
+        baroclinic_adjustment(1/50, name; momentum_advection, horizontal_closure)
     end
 
     return nothing
@@ -197,5 +207,43 @@ end
 include("Diagnostics/Diagnostics.jl")
 
 using .Diagnostics
+
+add_trailing_name(name) = name * "_snapshots.jld2"
+
+function calculate_diagnostics()
+    file_prefix = ["bilap", "weno5vd", "leith", "lapleith", 
+                   "smag", "weno5dd", "weno5vv", "weno9", "highres"]
+    filenames = add_trailing_characters.(file_prefix)
+    filenames = add_trailing_name.(filenames)
+
+    energies   = Dict()
+    spectras   = Dict()
+    zonalmeans = Dict()
+
+    for (prefix, filename) in zip(file_prefix, filenames)
+        fields    = all_fieldtimeseries(filename)
+        energy    = compute_spurious_mixing(fields)
+        zonalmean = compute_zonal_mean(fields)
+        # spectra = compute_spectra(fields)
+
+        energies[Symbol(prefix)] = energy
+        # spectras[Symbol(prefix)] = spectra
+        zonalmeans[Symbol(prefix)] = zonalmean
+    end
+
+    jldopen("energies.jld2","w") do f
+        for (key, value) in energies
+            f[string(key)] = value
+        end
+    end
+
+    jldopen("zonalmeans.jld2","w") do f
+        for (key, value) in zonalmeans
+            f[string(key)] = value
+        end
+    end
+
+    return nothing
+end
 
 end

@@ -2,6 +2,7 @@ module Diagnostics
 
 export all_fieldtimeseries, limit_timeseries!, propagate_on_fieldtimeseries
 export VolumeField, AreaField, MetricField, KineticEnergyField, time_average
+export compute_spurious_mixing
 
 using Oceananigans
 using KernelAbstractions: @kernel, @index 
@@ -31,5 +32,6 @@ include("spurious_mixing.jl")
 include("diagnostic_fields.jl")
 include("integrated_diagnostics.jl")
 include("spectra.jl")
+include("compute_spurious_mixing.jl")
 
 end

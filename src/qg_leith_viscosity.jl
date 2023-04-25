@@ -4,25 +4,36 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.TurbulenceClosures:
         tapering_factorᶠᶜᶜ,
         tapering_factorᶜᶠᶜ,
-        tapering_factorᶜᶜᶠ
+        tapering_factorᶜᶜᶠ,
+        SmallSlopeIsopycnalTensor,
+        AbstractScalarDiffusivity,
+        ExplicitTimeDiscretization
 
 import Oceananigans.TurbulenceClosures:
         calculate_diffusivities!,
+        DiffusivityFields,
         viscosity, 
         diffusivity,
         diffusive_flux_x,
         diffusive_flux_y, 
         diffusive_flux_z
 
-struct QGLeithViscosity{A, C, D, M} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, ThreeDimensionalFormulation}
-    C  :: A
-    Cᴿ  :: C
-    Cᴳᴹ :: D
+using Oceananigans.Utils: launch!
+using Oceananigans.Coriolis: fᶠᶠᵃ
+using Oceananigans.Operators
+using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b 
+
+using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxyzᶜᶜᶠ, ℑxzᶜᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ
+
+struct QGLeithViscosity{A, M} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
+    C :: A
     isopycnal_model :: M
 end
 
+QGLeithViscosity(; C=1.0, isopycnal_model=SmallSlopeIsopycnalTensor()) =
+    QGLeithViscosity(C, isopycnal_model)
 
-DiffusivityFields(grid, tracer_names, ::QGLeithViscosity) = 
+DiffusivityFields(grid, tracer_names, bcs, ::QGLeithViscosity) = 
                 (; νₑ = CenterField(grid), )
 
 @inline function abs²_∇h_ζ(i, j, k, grid, fields)
@@ -42,11 +53,11 @@ end
 end
 
 @inline ∂yb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis)^2 / 
-                                                                          ∂z_b(i, j, k, grid, buoyancy, tracers) *
+                                                                          max(1e-10, ∂z_b(i, j, k, grid, buoyancy, tracers)) *
                                                                           ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
 
 @inline ∂xb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis)^2 / 
-                                                                          ∂z_b(i, j, k, grid, buoyancy, tracers) *
+                                                                          max(1e-10, ∂z_b(i, j, k, grid, buoyancy, tracers))  *
                                                                           ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
 
 @inline function abs²_∇h_q(i, j, k, grid, coriolis, buoyancy, tracers)
@@ -59,7 +70,7 @@ end
 
 @inline Δᶠ(i, j, k, grid) = sqrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid)) 
 
-@kernel function calculate_qgleith_viscosity!(ν, grid, closure, buoyancy, velocities, tracers)
+@kernel function calculate_qgleith_viscosity!(ν, grid, closure, coriolis, buoyancy, velocities, tracers)
     i, j, k = @index(Global, NTuple)
 
     ∂ζ² =  abs²_∇h_ζ(i, j, k, grid, velocities)
