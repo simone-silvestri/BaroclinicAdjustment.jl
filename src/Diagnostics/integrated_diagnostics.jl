@@ -28,13 +28,13 @@ assumed_location(var) = var == "u" ? (Face, Center, Center) :
                         var == "w" ? (Center, Center, Face) : 
                         (Center, Center, Center)
 
-function all_fieldtimeseries(filename, dir = nothing; variables = ("u", "v", "w", "b"), checkpointer = false)
+function all_fieldtimeseries(filename, dir = nothing; arch = CPU(), variables = ("u", "v", "w", "b"), checkpointer = false)
 
     fields = Dict()
 
     if !(checkpointer)
         for var in variables
-            fields[Symbol(var)] = FieldTimeSeries(filename, var; backend=OnDisk(), architecture=CPU())
+            fields[Symbol(var)] = FieldTimeSeries(filename, var; backend=OnDisk(), architecture=arch)
         end
     else
         files   = readdir(dir)

@@ -60,7 +60,7 @@ function calculate_diagnostics(trailing_character = "_weaker")
         if isfile(filename)
 
             @info "doing file " filename
-            fields    = all_fieldtimeseries(filename)
+            fields    = all_fieldtimeseries(filename; arch = GPU())
             # fields    = add_kinetic_energy_and_vorticity_timeseries!(fields)
             energy    = compute_spurious_mixing(fields)
             zonalmean = compute_zonal_mean(fields)
