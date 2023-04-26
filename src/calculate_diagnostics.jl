@@ -46,17 +46,17 @@ function compute_spectra(f::Dict)
 end
 
 function calculate_diagnostics()
-    file_prefix = ["bilap", "weno5vd", "leith", "lapleith", 
-                   "smag", "weno5dd", "weno9",
-                   "qgleith"]
-    filenames = add_trailing_characters.(file_prefix)
-    filenames = add_trailing_name.(filenames)
+    file_prefix = ["bilap_larger", "weno5vd_larger", "leith_larger", "lapleith_larger", 
+                   "smag_larger", "weno5dd_larger", "weno9_larger",
+                   "qgleith_larger", "highre_larger"]
+    filenames = add_trailing_name.(file_prefix)
 
     energies   = Dict()
     spectras   = Dict()
     zonalmeans = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
+        @info "doing file " filename
         fields    = all_fieldtimeseries(filename)
         # fields    = add_kinetic_energy_and_vorticity_timeseries!(fields)
         energy    = compute_spurious_mixing(fields)
@@ -66,9 +66,18 @@ function calculate_diagnostics()
         energies[Symbol(prefix)] = energy
         # spectras[Symbol(prefix)] = spectra
         zonalmeans[Symbol(prefix)] = zonalmean
+    end
 
-        jldsave("energies_"  * filename,"w") 
-        jldsave("zonalmean_" * filename,"w") 
+    jldopen("energies.jld2","w") do f
+        for (key, value) in energies
+            f[string(key)] = value
+        end
+    end
+
+    jldopen("zonalmeans.jld2","w") do f
+        for (key, value) in zonalmeans
+            f[string(key)] = value
+        end
     end
     
     return nothing

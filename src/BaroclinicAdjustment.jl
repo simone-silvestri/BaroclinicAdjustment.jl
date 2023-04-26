@@ -31,7 +31,7 @@ end
 
 function set_geostrophic_velocity!(u, b, coriolis)
     grid = u.grid
-    launch!(architecture(grid), grid, :xy, u, b, grid, coriolis)
+    launch!(architecture(grid), grid, :xy, _geostrophic_velocity, u, b, grid, coriolis)
 
     return nothing
 end
@@ -56,7 +56,7 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     Ny = Base.Int(20 / resolution)
     Nz = 100
     stop_time = 200days
-    Δt = 5minutes
+    Δt = 2.5minutes
 
     grid = LatitudeLongitudeGrid(arch;
                                 topology = (Periodic, Bounded, Bounded),
