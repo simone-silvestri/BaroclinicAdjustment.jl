@@ -45,27 +45,31 @@ function compute_spectra(f::Dict)
 
 end
 
-function calculate_diagnostics()
-    file_prefix = ["bilap_larger", "weno5vd_larger", "leith_larger", "lapleith_larger", 
-                   "smag_larger", "weno5dd_larger", "weno9_larger",
-                   "qgleith_larger", "highre_larger"]
-    filenames = add_trailing_name.(file_prefix)
+function calculate_diagnostics(trailing_character = "_weaker")
+    file_prefix = ["weno5vd", "leith", "lapleith", 
+                   "smag", "weno5dd", "weno9",
+                   "qgleith", "highres"]
+    filenames = add_trailing_characters.(file_prefix, trailing_character)
+    filenames = add_trailing_name.(filenames)
 
     energies   = Dict()
     spectras   = Dict()
     zonalmeans = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
-        @info "doing file " filename
-        fields    = all_fieldtimeseries(filename)
-        # fields    = add_kinetic_energy_and_vorticity_timeseries!(fields)
-        energy    = compute_spurious_mixing(fields)
-        zonalmean = compute_zonal_mean(fields)
-        # spectra   = compute_spectra(fields)
+        if isfile(filename)
 
-        energies[Symbol(prefix)] = energy
-        # spectras[Symbol(prefix)] = spectra
-        zonalmeans[Symbol(prefix)] = zonalmean
+            @info "doing file " filename
+            fields    = all_fieldtimeseries(filename)
+            # fields    = add_kinetic_energy_and_vorticity_timeseries!(fields)
+            energy    = compute_spurious_mixing(fields)
+            zonalmean = compute_zonal_mean(fields)
+            # spectra   = compute_spectra(fields)
+
+            energies[Symbol(prefix)] = energy
+            # spectras[Symbol(prefix)] = spectra
+            zonalmeans[Symbol(prefix)] = zonalmean
+        end
     end
 
     jldopen("energies.jld2","w") do f

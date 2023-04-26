@@ -162,7 +162,7 @@ viscosity_name(clo::ScalarDiffusivity)           = typeof(clo.ν)
 viscosity_name(clo) = typeof(clo)
 advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
-add_trailing_characters(name) = name * "_weaker"
+add_trailing_characters(name, trailing_character = "_weaker") = name * trailing_character
 
 function run_eight_degree_simulations()
 

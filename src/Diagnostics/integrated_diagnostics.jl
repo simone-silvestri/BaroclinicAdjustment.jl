@@ -176,7 +176,7 @@ using Oceananigans.Operators: Δzᶜᶠᶜ
 
 function calculate_eulerian_MOC(v::Field)
         
-    v̄ = compute!(Field(Integral(v, dims = 1)))
+    v̄ = mean(v, dims = 1)
 
     ψ = Field((Nothing, Face, Face), v.grid)
 
