@@ -78,7 +78,10 @@ function baroclinic_adjustment(resolution, filename; arch = GPU(),
     coriolis = HydrostaticSphericalCoriolis()
 
     Δy = 1000kilometers / Ny
-    vertical_closure = VerticalScalarDiffusivity(ν=1e-4, κ=1e-5)
+    vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
+                                                               convective_νz = zero(grid),
+                                                               background_κz = 1e-6,
+                                                               background_νz = 1e-4)
 
     closures = (vertical_closure, horizontal_closure)
 
