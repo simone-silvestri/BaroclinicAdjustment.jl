@@ -222,7 +222,7 @@ function run_high_res_simulation()
 end
 
 run_2d_flat_simulation() = 
-    baroclinic_adjustment(1/8, name; horizontal_closure = leith_viscosity(HorizontalFormulation()), xdirection = false)
+    baroclinic_adjustment(1/8, "2dsim"; horizontal_closure = leith_viscosity(HorizontalFormulation()), xdirection = false)
 
 function run_all()
     run_2d_flat_simulation()
