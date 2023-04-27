@@ -1,6 +1,7 @@
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: hydrostatic_fields
+using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, AbstractScalarBiharmonicDiffusivity
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
@@ -8,8 +9,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 VerticalVorticityField(fields::Dict, i) = VerticalVorticityField((; u = fields[:u][i], v = fields[:v][i]))
 KineticEnergyField(fields::Dict, i)     = KineticEnergyField((; u = fields[:u][i], v = fields[:v][i]))
 
-VerticalVorticityOperation(fields::Dict, i) = VerticalVorticityOperation((; u = fields[:u][i], v = fields[:v][i]))
-KineticEnergyOperation(fields::Dict, i)     = KineticEnergyOperation((; u = fields[:u][i], v = fields[:v][i]))
+VerticalVorticityOperation(fields::Dict, i)  =  VerticalVorticityOperation((; u = fields[:u][i], v = fields[:v][i]))
+PotentialVorticityOperation(fields::Dict, i) = PotentialVorticityOperation((; u = fields[:u][i], v = fields[:v][i], b = fields[:b][i]))
+KineticEnergyOperation(fields::Dict, i)      =      KineticEnergyOperation((; u = fields[:u][i], v = fields[:v][i]))
 
 function KineticEnergyField(velocities::NamedTuple)
     u = velocities.u
@@ -30,6 +32,19 @@ function VerticalVorticityOperation(velocities::NamedTuple)
     return ζ_op
 end
 
+@inline N²ᶠᶠᶠ(i, j, k, grid, b) = max(1e-10, ℑxyᶠᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, b))
+@inline b_term(i, j, k, grid, b) = fᶠᶠᵃ(i, j, k, grid, HydrostaticSphericalCoriolis()) / N²ᶠᶠᶠ(i, j, k, grid, b) * ℑxyᶠᶠᵃ(i, j, k, grid, b)
+@inline pvᶠᶠᶜ(i, j, k, grid, u, v, b) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) + ∂zᶠᶠᶜ(i, j, k, grid, b_term, b) 
+
+function PotentialVorticityOperation(fields::NamedTuple)
+
+    grid = fields.u.grid
+    computed_dependencies = (fields.u, fields.v, fields.b)
+
+    ζ_op = KernelFunctionOperation{Face, Face, Center}(pvᶠᶠᶜ, grid, computed_dependencies...)
+
+    return ζ_op
+end
 
 function KineticEnergyOperation(velocities::NamedTuple)
     u = velocities.u

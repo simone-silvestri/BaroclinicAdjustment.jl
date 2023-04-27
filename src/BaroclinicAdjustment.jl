@@ -46,10 +46,10 @@ function barotropic_substeps(Δt, grid, gravitational_acceleration)
     return  Base.Int(ceil(2 * Δt / (0.7 / wave_speed * Δ)))
 end
     
-function baroclinic_adjustment(resolution, filename; horizontal_closure = nothing, momentum_advection = VectorInvariant())
-
-    # Architecture
-    arch = GPU()
+function baroclinic_adjustment(resolution, filename; arch = GPU(), 
+                                                     horizontal_closure = nothing,
+                                                     momentum_advection = VectorInvariant(), 
+                                                     xdirection = true)
     
     # Domain
     Lz = 1kilometers     # depth [m]
@@ -58,13 +58,22 @@ function baroclinic_adjustment(resolution, filename; horizontal_closure = nothin
     stop_time = 200days
     Δt = 2.5minutes
 
-    grid = LatitudeLongitudeGrid(arch;
-                                topology = (Periodic, Bounded, Bounded),
-                                size = (Ny, Ny, Nz), 
-                                longitude = (-10, 10),
-                                latitude = (-60, -40),
-                                z = (-Lz, 0),
-                                halo = (6, 6, 6))
+    if xdirection 
+        grid = LatitudeLongitudeGrid(arch;
+                                    topology = (Periodic, Bounded, Bounded),
+                                    size = (Ny, Ny, Nz), 
+                                    longitude = (-10, 10),
+                                    latitude = (-60, -40),
+                                    z = (-Lz, 0),
+                                    halo = (6, 6, 6))
+    else
+        grid = LatitudeLongitudeGrid(arch;
+                                     topology = (Flat, Bounded, Bounded),
+                                     size = (Ny, Nz), 
+                                     latitude = (-60, -40),
+                                     z = (-Lz, 0),
+                                     halo = (6, 6))
+    end
 
     coriolis = HydrostaticSphericalCoriolis()
 
@@ -212,7 +221,11 @@ function run_high_res_simulation()
     return nothing
 end
 
+run_2d_flat_simulation() = 
+    baroclinic_adjustment(1/8, name; horizontal_closure = leith_viscosity(HorizontalFormulation()), xdirection = false)
+
 function run_all()
+    run_2d_flat_simulation()
     run_eight_degree_simulations()
     run_high_res_simulation()
 end
