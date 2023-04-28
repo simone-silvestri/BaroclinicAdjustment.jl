@@ -76,13 +76,13 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
 
     coriolis = BetaPlane(latitude = -45)
 
-    Δy = 1000kilometers / Ny
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
                                                                convective_νz = zero(grid),
                                                                background_κz = 1e-6,
                                                                background_νz = 1e-4)
 
-    closures = (vertical_closure, horizontal_closure)
+    
+    closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
     @info "Building a model..."
 
@@ -179,15 +179,12 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
 
     coriolis = HydrostaticSphericalCoriolis()
 
-    Δy = 1000kilometers / Ny
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
                                                                convective_νz = zero(grid),
                                                                background_κz = 1e-6,
                                                                background_νz = 1e-4)
 
-    closures = (vertical_closure, horizontal_closure)
-
-    substeps = barotropic_substeps(10minutes, grid, Oceananigans.BuoyancyModels.g_Earth)
+    closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
     @info "Building a model..."
 
@@ -201,16 +198,6 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
                                         free_surface = ImplicitFreeSurface())
 
     @info "Built $model."
-
-    """
-    Linear ramp from 0 to 1 between -Δy/2 and +Δy/2.
-
-    For example:
-
-    y < y₀           => ramp = 0
-    y₀ < y < y₀ + Δy => ramp = y / Δy
-    y > y₀ + Δy      => ramp = 1
-    """
 
     gradient = "y"
 
