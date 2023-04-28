@@ -15,7 +15,6 @@ include("horizontal_visc.jl")
 include("qg_leith_viscosity.jl")
 include("outputs.jl")
 
-
 @inline ∂z_uᴳ(i, j, k, grid, b, coriolis) = 1 / fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxyzᶠᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, b)
 
 @kernel function _geostrophic_velocity(u, b, grid, coriolis)
@@ -86,9 +85,6 @@ function baroclinic_adjustment(resolution, filename; arch = GPU(),
     closures = (vertical_closure, horizontal_closure)
 
     substeps = barotropic_substeps(10minutes, grid, Oceananigans.BuoyancyModels.g_Earth)
-
-    @info "running with $substeps substeps"
-    free_surface = SplitExplicitFreeSurface(; substeps)
 
     @info "Building a model..."
 
