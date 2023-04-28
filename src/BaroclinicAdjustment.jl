@@ -78,7 +78,7 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
 
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
                                                                convective_νz = zero(grid),
-                                                               background_κz = 1e-6,
+                                                               background_κz = 1e-4,
                                                                background_νz = 1e-4)
 
     
