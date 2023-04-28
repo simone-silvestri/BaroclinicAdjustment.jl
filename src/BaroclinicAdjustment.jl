@@ -103,7 +103,7 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 
     Δb = 0.06
-    Δy = 50kilometers
+    Δy = 200kilometers
         
     bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
 
@@ -181,7 +181,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
 
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
                                                                convective_νz = zero(grid),
-                                                               background_κz = 1e-6,
+                                                               background_κz = 1e-4,
                                                                background_νz = 1e-4)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
