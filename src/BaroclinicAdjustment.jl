@@ -172,7 +172,7 @@ advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
 add_trailing_characters(name, trailing_character = "_weaker") = name * trailing_character
 
-function run_eight_degree_simulations()
+function run_eight_degree_simulations(trailing_character = "_weaker")
 
     vi1 = VectorInvariant()
     vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
@@ -192,7 +192,7 @@ function run_eight_degree_simulations()
     horizontal_closures = [hi2, hi1, hi3, hi4, hi5, hi1, hi1, hi1, hi6, hi1]
 
     names = ["bilap", "weno5vd", "leith", "lapleith", "smag", "weno5dd", "weno5vv", "weno9", "qgleith", "weno9dd"]
-    names = add_trailing_characters.(names)
+    names = add_trailing_characters.(names, Ref(trailing_character))
     
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
         baroclinic_adjustment(1/8, name; momentum_advection, horizontal_closure)
@@ -201,7 +201,7 @@ function run_eight_degree_simulations()
     return nothing
 end
 
-function run_high_res_simulation()
+function run_high_res_simulation(trailing_character = "_weaker")
 
     vi1 = VectorInvariant()
 
@@ -211,7 +211,7 @@ function run_high_res_simulation()
     horizontal_closures = [hi4]
 
     names = ["highres"]
-    names = add_trailing_characters.(names)
+    names = add_trailing_characters.(names, Ref(trailing_character))
 
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
         baroclinic_adjustment(1/50, name; momentum_advection, horizontal_closure)
@@ -220,13 +220,15 @@ function run_high_res_simulation()
     return nothing
 end
 
-run_2d_flat_simulation() = 
-    baroclinic_adjustment(1/8, "2dsim"; horizontal_closure = leith_viscosity(HorizontalFormulation()), xdirection = false)
+run_2d_flat_simulation(trailing_character = "_weaker") = 
+    baroclinic_adjustment(1/8, add_trailing_characters("2dsim", trailing_character);
+                          horizontal_closure = leith_viscosity(HorizontalFormulation()),
+                          xdirection = false)
 
-function run_all()
-    run_2d_flat_simulation()
-    run_eight_degree_simulations()
-    run_high_res_simulation()
+function run_all(trailing_character = "_weaker")
+    run_2d_flat_simulation(trailing_character)
+    run_eight_degree_simulations(trailing_character)
+    run_high_res_simulation(trailing_character)
 end
 
 include("Diagnostics/Diagnostics.jl")
