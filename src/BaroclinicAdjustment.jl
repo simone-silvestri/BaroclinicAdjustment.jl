@@ -62,14 +62,14 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
                                topology = (Periodic, Bounded, Bounded),
                                size = (Ny, Ny, Nz), 
                                x = (0, 2000kilometers),
-                               x = (0, 2000kilometers),
+                               y = (0, 2000kilometers),
                                z = (-Lz, 0),
                                halo = (6, 6, 6))
     else
         grid = RectilinearGrid(arch;
                                topology = (Flat, Bounded, Bounded),
                                size = (Ny, Nz), 
-                               latitude = (-60, -40),
+                               y = (0, 2000kilometers),
                                z = (-Lz, 0),
                                halo = (6, 6))
     end
