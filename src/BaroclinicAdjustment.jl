@@ -108,7 +108,7 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
 
     set!(model, b=bᵢ)
-    set_geostrophic_velocity!(model.velocities.u, model.tracers.b, model.coriolis)
+    # set_geostrophic_velocity!(model.velocities.u, model.tracers.b, model.coriolis)
 
     #####
     ##### Simulation building
