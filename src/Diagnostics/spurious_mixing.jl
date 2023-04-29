@@ -50,6 +50,9 @@ function calculate_z★!(z★::Field, b::Field, vol, total_area)
     sorted_v_field = v_arr[perm]
     integrated_v   = cumsum(sorted_v_field)    
 
+    sorted_b_field = arch_array(arch, sorted_b_field)
+    integrated_v   = arch_array(arch, integrated_v)
+
     launch!(arch, grid, :xyz, _calculate_z★, z★, b, sorted_b_field, integrated_v)
     
     z★ ./= total_area
@@ -90,6 +93,8 @@ function calculate_Γ²!(Γ², z★, ρ)
     ρ_arr  = (Array(interior(ρ))[:])[perm]
     z★_arr = (Array(interior(z★))[:])[perm]
 
+    ρ_arr  = arch_array(architecture(grid), ρ_arr)
+    z★_arr = arch_array(architecture(grid), z★_arr)
     launch!(arch, grid, :xyz, _calculate_Γ², Γ², z★, z★_arr, ρ_arr, grid)
 
     return nothing

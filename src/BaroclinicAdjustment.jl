@@ -53,9 +53,9 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     # Domain
     Lz = 1kilometers     # depth [m]
     Ny = Base.Int(2000kilometers ÷ (resolution * 100kilometers))
-    Nz = 100
+    Nz = 50
     stop_time = 200days
-    Δt = 2.5minutes
+    Δt = 5.0minutes
 
     if xdirection 
         grid = RectilinearGrid(arch;
@@ -102,7 +102,7 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     # Parameters
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 
-    Δb = 0.06
+    Δb = 0.006
     Δy = 200kilometers
         
     bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
@@ -117,7 +117,7 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=Δt)
+    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     # add progress callback
@@ -156,7 +156,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
     # Domain
     Lz = 1kilometers     # depth [m]
     Ny = Base.Int(20 / resolution)
-    Nz = 100
+    Nz = 50
     stop_time = 200days
     Δt = 2.5minutes
 
@@ -181,11 +181,16 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
 
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
                                                                convective_νz = zero(grid),
-                                                               background_κz = 1e-4,
-                                                               background_νz = 1e-4)
+                                                               background_κz = 1e-5,
+                                                               background_νz = 1e-5)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
+    gravity = Oceananigans.BuoyancyModels.g_Earth
+    substeps = barotropic_substeps(20minutes, grid, gravity)
+
+    free_surface = SplitExplicitFreeSurface(; substeps)
+    @info "running with substeps $substeps"
     @info "Building a model..."
 
     model = HydrostaticFreeSurfaceModel(; grid,
@@ -195,7 +200,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
                                         tracers = :b,
                                         momentum_advection,
                                         tracer_advection = WENO(),
-                                        free_surface = ImplicitFreeSurface())
+                                        free_surface)
 
     @info "Built $model."
 
@@ -209,13 +214,13 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
     # Parameters
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 
-    Δy = 5 # degree
-    Δb = 0.06
+    Δy = 1.0 # degree
+    Δb = 0.006
+    ϵb = 1e-2 * Δb # noise amplitude
 
-    bᵢ(λ, y, z) = N² * z + Δb * ramp(λ, y, Δy)
-
+    bᵢ(x, y, z) = N² * z + Δb * ramp(x, y, Δy) + ϵb * randn()
+    
     set!(model, b=bᵢ)
-    set_geostrophic_velocity!(model.velocities.u, model.tracers.b, model.coriolis)
 
     #####
     ##### Simulation building
@@ -224,7 +229,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=Δt)
+    wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes, min_Δt = 25)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     # add progress callback
@@ -262,7 +267,7 @@ advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
 add_trailing_characters(name, trailing_character = "_weaker") = name * trailing_character
 
-function run_eight_degree_simulations(trailing_character = "_weaker")
+function run_simulations(resolution; trailing_character = "_weaker")
 
     vi1 = VectorInvariant()
     vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
@@ -285,13 +290,13 @@ function run_eight_degree_simulations(trailing_character = "_weaker")
     names = add_trailing_characters.(names, Ref(trailing_character))
     
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-        baroclinic_adjustment_latlong(1/8, name; momentum_advection, horizontal_closure)
+        baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure)
     end
 
     return nothing
 end
 
-function run_high_res_simulation(trailing_character = "_weaker")
+function run_high_res_simulation(resolution; trailing_character = "_weaker")
 
     vi1 = VectorInvariant()
 
@@ -304,21 +309,21 @@ function run_high_res_simulation(trailing_character = "_weaker")
     names = add_trailing_characters.(names, Ref(trailing_character))
 
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-        baroclinic_adjustment_latlong(1/50, name; momentum_advection, horizontal_closure)
+        baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure)
     end
 
     return nothing
 end
 
-run_2d_flat_simulation(trailing_character = "_weaker") = 
-    baroclinic_adjustment_latlong(1/8, add_trailing_characters("2dsim", trailing_character);
+run_2d_flat_simulation(resolution; trailing_character = "_weaker") = 
+    baroclinic_adjustment_latlong(resolution, add_trailing_characters("2dsim", trailing_character);
                           horizontal_closure = leith_viscosity(HorizontalFormulation()),
                           xdirection = false)
 
-function run_all(trailing_character = "_weaker")
-    run_2d_flat_simulation(trailing_character)
-    run_eight_degree_simulations(trailing_character)
-    run_high_res_simulation(trailing_character)
+function run_all(resolution; trailing_character = "_weaker")
+    run_2d_flat_simulation(resolution; trailing_character)
+    run_simulations(resolution; trailing_character)
+    run_high_res_simulation(1/50; trailing_character)
 end
 
 include("Diagnostics/Diagnostics.jl")
