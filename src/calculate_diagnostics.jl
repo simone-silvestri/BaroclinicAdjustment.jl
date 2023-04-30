@@ -46,8 +46,8 @@ function compute_spectra(f::Dict)
 end
 
 function calculate_diagnostics(trailing_character = "_weaker")
-    file_prefix = ["weno5vd", "leith", "lapleith", 
-                   "smag", "weno5dd", "weno9",
+    file_prefix = ["weno5vd", "leith", "lapleith", "bilap",
+                   "smag", "weno5dd", "weno5vv", "weno9", "weno9dd",
                    "qgleith", "highres"]
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
