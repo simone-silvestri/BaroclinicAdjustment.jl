@@ -65,26 +65,26 @@ function calculate_diagnostics(trailing_character = "_weaker")
             GC.gc()
             # fields  = add_kinetic_energy_and_vorticity_timeseries!(fields)
             energy    = compute_spurious_mixing(fields)
-            zonalmean = compute_zonal_mean(fields)
+            # zonalmean = compute_zonal_mean(fields)
             # spectra   = compute_spectra(fields)
 
             energies[Symbol(prefix)] = energy
             # spectras[Symbol(prefix)] = spectra
-            zonalmeans[Symbol(prefix)] = zonalmean
+            # zonalmeans[Symbol(prefix)] = zonalmean
         end
     end
 
-    jldopen("energies.jld2","w") do f
+    jldopen("energies" * trailing_character * ".jld2","w") do f
         for (key, value) in energies
             f[string(key)] = value
         end
     end
 
-    jldopen("zonalmeans.jld2","w") do f
-        for (key, value) in zonalmeans
-            f[string(key)] = value
-        end
-    end
+    # jldopen("zonalmeans.jld2","w") do f
+    #     for (key, value) in zonalmeans
+    #         f[string(key)] = value
+    #     end
+    # end
     
     return nothing
 end
