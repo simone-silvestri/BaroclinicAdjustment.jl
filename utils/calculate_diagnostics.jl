@@ -1,9 +1,14 @@
 using Statistics: mean
-
+using BaroclinicAdjustment
+using Oceananigans
 using BaroclinicAdjustment.Diagnostics: compute_rpe_density, 
                                         calculate_KE,
                                         calculate_APE,
-                                        calculate_RPE
+                                        calculate_RPE,
+                                        compute_spectra
+
+using Oceananigans.Utils: launch!
+using KernelAbstractions: @kernel, @index
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
@@ -35,16 +40,6 @@ function compute_zonal_mean(f::Dict)
     return (; ū, v̄, w̄, b̄)
 end
 
-function compute_spectra(f::Dict)
-
-    # Espec = Array{Spectrum}(undef, )
-    # Ωspec = 
-
-    # for time in 1:length(f[:u].times)
-
-
-end
-
 function calculate_diagnostics(trailing_character = "_weaker")
     file_prefix = ["weno5vd", "leith", "lapleith", "bilap",
                    "smag", "weno5dd", "weno5vv", "weno9", "weno9dd",
@@ -63,28 +58,27 @@ function calculate_diagnostics(trailing_character = "_weaker")
             fields = all_fieldtimeseries(filename; arch = CPU())
 
             GC.gc()
-            # fields  = add_kinetic_energy_and_vorticity_timeseries!(fields)
-            energy    = compute_spurious_mixing(fields)
+            # energy    = compute_spurious_mixing(fields)
             # zonalmean = compute_zonal_mean(fields)
-            # spectra   = compute_spectra(fields)
+            spectra   = compute_spectra(fields)
 
-            energies[Symbol(prefix)] = energy
-            # spectras[Symbol(prefix)] = spectra
+            # energies[Symbol(prefix)] = energy
+            spectras[Symbol(prefix)] = spectra
             # zonalmeans[Symbol(prefix)] = zonalmean
         end
     end
 
-    jldopen("energies" * trailing_character * ".jld2","w") do f
-        for (key, value) in energies
-            f[string(key)] = value
-        end
-    end
-
-    # jldopen("zonalmeans.jld2","w") do f
-    #     for (key, value) in zonalmeans
+    # jldopen("energies" * trailing_character * ".jld2","w") do f
+    #     for (key, value) in energies
     #         f[string(key)] = value
     #     end
     # end
+
+    jldopen("spectra" * trailing_character * ".jld2","w") do f
+        for (key, value) in spectras
+            f[string(key)] = value
+        end
+    end
     
     return nothing
 end

@@ -414,11 +414,11 @@ version = "1.2.0"
 
 [[deps.Oceananigans]]
 deps = ["Adapt", "CUDA", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilArrays", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays"]
-git-tree-sha1 = "fe6418f882390c96a0be57cffd67369ba4de9b09"
-repo-rev = "ss/test_hypothesis"
+git-tree-sha1 = "28d249fa290c1e02bd005275218f57a4019e178d"
+repo-rev = "ss/new_upwinding"
 repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.81.1"
+version = "0.81.0"
 
 [[deps.OffsetArrays]]
 deps = ["Adapt"]

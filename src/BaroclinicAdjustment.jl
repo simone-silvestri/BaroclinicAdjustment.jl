@@ -103,10 +103,11 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 
     Δb = 0.006
-    Δy = 200kilometers
-        
-    bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
+    Δy = 100kilometers
+    ϵb = 1e-2 * Δb # noise amplitude
 
+    bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
+        
     set!(model, b=bᵢ)
     # set_geostrophic_velocity!(model.velocities.u, model.tracers.b, model.coriolis)
 
@@ -320,16 +321,15 @@ run_2d_flat_simulation(resolution; trailing_character = "_weaker") =
                           horizontal_closure = leith_viscosity(HorizontalFormulation()),
                           xdirection = false)
 
-function run_all(resolution; trailing_character = "_weaker")
-    run_2d_flat_simulation(resolution; trailing_character)
-    run_simulations(resolution; trailing_character)
-    run_high_res_simulation(1/50; trailing_character)
+function run_all(resolutions; trailing_character = ["_weaker"])
+    for (res, char) in zip(resolutions, trailing_character)
+        run_simulations(res; trailing_character = char)
+    end
+    run_high_res_simulation(1/50; trailing_character = "_final")
 end
 
 include("Diagnostics/Diagnostics.jl")
 
 using .Diagnostics
-
-include("calculate_diagnostics.jl")
 
 end

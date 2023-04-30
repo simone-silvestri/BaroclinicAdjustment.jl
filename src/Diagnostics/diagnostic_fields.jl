@@ -55,14 +55,19 @@ function KineticEnergyOperation(velocities::NamedTuple)
     return E_op
 end
 
-function VerticalVorticityField(velocities::NamedTuple)
+VerticalVorticity(f::Dict, i) = compute!(Field(VerticalVorticityOperation(f, i)))
+KineticEnergy(f::Dict, i)     = compute!(Field(KineticEnergyOperation(f, i)))
 
-    grid = velocities.u.grid
-    computed_dependencies = (velocities.u, velocities.v)
 
-    ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies...)
+@inline _deformation_radius(i, j, k, grid, b) = ∂zᶜᶜᶠ(i, j, k, grid, b) / π /
+                                                abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, HydrostaticSphericalCoriolis()))
 
-    return compute!(Field(ζ_op))
+function DeformationRadius(f::Dict, i)
+    
+    Rop = KernelFunctionOperation{Center, Center, Face}(_deformation_radius, f[:b].grid, f[:b][i])
+    R   = compute!(Field(Integral(Rop, dims = 3))) 
+
+    return R
 end
 
 function HorizontalFriction(model; ClosureType = AbstractScalarBiharmonicDiffusivity)

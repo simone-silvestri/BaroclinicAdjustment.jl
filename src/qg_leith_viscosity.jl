@@ -115,54 +115,51 @@ end
 
 # Diffusive fluxes for Leith diffusivities
 
-@inline function diffusive_flux_x(i, j, k, grid, closure::QGLeithViscosity, diffusivities, 
-                                ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+@inline diffusive_flux_x(i, j, k, grid, closure::QGLeithViscosity, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 
-    νₑ = diffusivities.νₑ
+#     νₑ = diffusivities.νₑ
 
-    νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
-    ∂x_c  = ∂xᶠᶜᶜ(i, j, k, grid, c)
+#     νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
+#     ∂x_c  = ∂xᶠᶜᶜ(i, j, k, grid, c)
 
-    ϵ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, fields, buoyancy)
+#     ϵ = tapering_factorᶠᶜᶜ(i, j, k, grid, closure, fields, buoyancy)
 
-    return - ϵ * νₑⁱʲᵏ * ∂x_c
-end
+#     return - ϵ * νₑⁱʲᵏ * ∂x_c
+# end
 
-@inline function diffusive_flux_y(i, j, k, grid, closure::QGLeithViscosity, diffusivities,
-                                ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+@inline diffusive_flux_y(i, j, k, grid, closure::QGLeithViscosity, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 
-    νₑ = diffusivities.νₑ
+#     νₑ = diffusivities.νₑ
 
-    νₑⁱʲᵏ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ)
-    ∂y_c  = ∂yᶜᶠᶜ(i, j, k, grid, c)
+#     νₑⁱʲᵏ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ)
+#     ∂y_c  = ∂yᶜᶠᶜ(i, j, k, grid, c)
 
-    ϵ = tapering_factorᶜᶠᶜ(i, j, k, grid, closure, fields, buoyancy)
+#     ϵ = tapering_factorᶜᶠᶜ(i, j, k, grid, closure, fields, buoyancy)
 
-    return - ϵ *νₑⁱʲᵏ * ∂y_c
-end
+#     return - ϵ *νₑⁱʲᵏ * ∂y_c
+# end
 
-@inline function diffusive_flux_z(i, j, k, grid, closure::QGLeithViscosity, diffusivities, 
-                                ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+@inline diffusive_flux_z(i, j, k, grid, closure::QGLeithViscosity, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 
-    νₑ = diffusivities.νₑ
+#     νₑ = diffusivities.νₑ
 
-    νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
+#     νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
 
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
-    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
+#     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+#     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+#     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+#     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+#     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
+#     R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
 
-    ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, fields, buoyancy)
+#     ϵ = tapering_factorᶜᶜᶠ(i, j, k, grid, closure, fields, buoyancy)
 
-    return - ϵ * νₑⁱʲᵏ * (
-          2 * R₃₁ * ∂x_c
-        + 2 * R₃₂ * ∂y_c
-            + R₃₃ * ∂z_c)
-end
+#     return - ϵ * νₑⁱʲᵏ * (
+#           2 * R₃₁ * ∂x_c
+#         + 2 * R₃₂ * ∂y_c
+#             + R₃₃ * ∂z_c)
+# end
 
                 
                 
