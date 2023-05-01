@@ -115,7 +115,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].KE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].KE[$iter:$iter])
 
-    fig = Figure(400, 400)
+    fig = Figure(resolution = (400, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Kinetic Energy")
@@ -138,7 +138,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].RPE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].RPE[$iter:$iter])
 
-    fig = Figure(400, 400)
+    fig = Figure(resolution = (400, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Reference PE")
@@ -164,7 +164,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"][$iter:$iter])
     Pb16 = @lift(   en16["bilap"][$iter:$iter])
 
-    fig = Figure(400, 400)
+    fig = Figure(resolution = (400, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Enstrophy")
@@ -190,7 +190,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"][$iter:$iter])
     Pb16 = @lift(   en16["bilap"][$iter:$iter])
 
-    fig = Figure(400, 400)
+    fig = Figure(resolution = (400, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Mean Stratification")
