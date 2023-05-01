@@ -73,7 +73,7 @@ function surface_videos(trailing_character = "_weaker")
     end
 end
 
-function plot_stuff!(fig, axis, Ew4, El4, Eb4, Ew16, El16, Eb16, Pw4, 
+function plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, Pw4, 
                      Pl4, Pb4, Pw16, Pl16, Pb16, iter_arr,
                      color1, color2, color3)
     lines!(ax, Ew4, linewidth = 2, color = color3, label = "3D-WENO-VI")
@@ -120,9 +120,9 @@ function plot_all()
               xlabel = "days", 
               ylabel = "Integrated Kinetic Energy")
         
-    plot_stuff!(fig, ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
-                         Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
-                         iter_arr, color1, color2, color3)
+    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
+                    Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
+                    iter_arr, color1, color2, color3)
     record_video!("energy_video", fig, iter, 201)
 
     Ew4  = @lift(  en4["weno5dd"].RPE[1:$iter])
@@ -143,9 +143,9 @@ function plot_all()
               xlabel = "days", 
               ylabel = "Integrated Reference PE")
         
-    plot_stuff!(fig, ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
-                         Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
-                         iter_arr, color1, color2, color3)
+    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
+                    Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
+                    iter_arr, color1, color2, color3)
     record_video!("RPE_video", fig, iter, 201)
 
     en4  = jldopen("enstrophies_quarter.jld2")
@@ -169,9 +169,9 @@ function plot_all()
               xlabel = "days", 
               ylabel = "Integrated Enstrophy")
         
-    plot_stuff!(fig, ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
-                         Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
-                         iter_arr, color1, color2, color3)
+    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
+                    Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
+                    iter_arr, color1, color2, color3)
     record_video!("Enstrophy_video", fig, iter, 201)
 
     en4  = jldopen("stratif_quarter.jld2")
@@ -195,8 +195,8 @@ function plot_all()
               xlabel = "days", 
               ylabel = "Mean Stratification")
         
-    plot_stuff!(fig, ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
-                         Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
-                         iter_arr, color1, color2, color3)
+    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
+                    Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
+                    iter_arr, color1, color2, color3)
     record_video!("Stratif_video", fig, iter, 201)
 end
