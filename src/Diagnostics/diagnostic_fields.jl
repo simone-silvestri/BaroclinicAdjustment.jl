@@ -12,6 +12,25 @@ KineticEnergyField(fields::Dict, i)     = KineticEnergyField((; u = fields[:u][i
 VerticalVorticityOperation(fields::Dict, i)  =  VerticalVorticityOperation((; u = fields[:u][i], v = fields[:v][i]))
 PotentialVorticityOperation(fields::Dict, i) = PotentialVorticityOperation((; u = fields[:u][i], v = fields[:v][i], b = fields[:b][i]))
 KineticEnergyOperation(fields::Dict, i)      =      KineticEnergyOperation((; u = fields[:u][i], v = fields[:v][i]))
+StratificationOperation(fields::Dict, i)     =     StratificationOperation(fields[:b][i])
+
+MetricField(loc, grid, metric; indices = default_indices(3)) = compute!(Field(GridMetricOperation(loc, metric, grid); indices))
+
+VolumeField(grid, loc=(Center, Center, Center);  indices = default_indices(3)) = MetricField(loc, grid, Oceananigans.AbstractOperations.volume; indices)
+  AreaField(grid, loc=(Center, Center, Nothing); indices = default_indices(3)) = MetricField(loc, grid, Oceananigans.AbstractOperations.Az; indices)
+
+DensityField(b::Field; ρ₀ = 1000.0, g = 9.80655) = compute!(Field(ρ₀ * (1 - g * b)))
+
+function HeightField(grid, loc = (Center, Center, Center))  
+
+    zf = Field(loc, grid)
+
+    for k in 1:size(zf, 3)
+        interior(zf, :, :, k) .= znode(k, grid, loc[3]())
+    end
+
+    return zf
+end
 
 function KineticEnergyField(velocities::NamedTuple)
     u = velocities.u
@@ -32,7 +51,17 @@ function VerticalVorticityOperation(velocities::NamedTuple)
     return ζ_op
 end
 
+function StratificationOperation(b)
+    grid = b.grid
+
+    N2_op = KernelFunctionOperation{Center, Center, Face}(N²ᶜᶜᶠ, grid, b)
+
+    return N2_op
+end
+
 @inline N²ᶠᶠᶠ(i, j, k, grid, b) = max(1e-10, ℑxyᶠᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, b))
+@inline N²ᶜᶜᶠ(i, j, k, grid, b) = ∂zᶜᶜᶠ(i, j, k, grid, b)
+
 @inline b_term(i, j, k, grid, b) = fᶠᶠᵃ(i, j, k, grid, HydrostaticSphericalCoriolis()) / N²ᶠᶠᶠ(i, j, k, grid, b) * ℑxyᶠᶠᵃ(i, j, k, grid, b)
 @inline pvᶠᶠᶜ(i, j, k, grid, u, v, b) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) + ∂zᶠᶠᶜ(i, j, k, grid, b_term, b) 
 
@@ -57,9 +86,9 @@ end
 
 VerticalVorticity(f::Dict, i) = compute!(Field(VerticalVorticityOperation(f, i)))
 KineticEnergy(f::Dict, i)     = compute!(Field(KineticEnergyOperation(f, i)))
+Stratification(f::Dict, i)    = compute!(Field(StratificationOperation(f, i)))
 
-
-@inline _deformation_radius(i, j, k, grid, b) = ∂zᶜᶜᶠ(i, j, k, grid, b) / π /
+@inline _deformation_radius(i, j, k, grid, b) = sqrt(max(0, ∂zᶜᶜᶠ(i, j, k, grid, b))) / π /
                                                 abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, HydrostaticSphericalCoriolis()))
 
 function DeformationRadius(f::Dict, i)

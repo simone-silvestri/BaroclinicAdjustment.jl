@@ -1,14 +1,18 @@
 using Statistics: mean
-using BaroclinicAdjustment
 using Oceananigans
+using BaroclinicAdjustment
+using BaroclinicAdjustment: add_trailing_characters
+using BaroclinicAdjustment.Diagnostics
 using BaroclinicAdjustment.Diagnostics: compute_rpe_density, 
                                         calculate_KE,
                                         calculate_APE,
                                         calculate_RPE,
+                                        calculate_Ω,
+                                        calculate_N²,
+                                        calculate_deformation_radius,
                                         compute_spectra
 
-using Oceananigans.Utils: launch!
-using KernelAbstractions: @kernel, @index
+using JLD2
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
@@ -47,9 +51,12 @@ function calculate_diagnostics(trailing_character = "_weaker")
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
 
-    energies   = Dict()
-    spectras   = Dict()
-    zonalmeans = Dict()
+    energies  = Dict()
+    spectras  = Dict()
+    defradii  = Dict()
+
+    enstrophies = Dict()
+    stratif     = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename)
@@ -58,27 +65,33 @@ function calculate_diagnostics(trailing_character = "_weaker")
             fields = all_fieldtimeseries(filename; arch = CPU())
 
             GC.gc()
-            # energy    = compute_spurious_mixing(fields)
-            # zonalmean = compute_zonal_mean(fields)
-            spectra   = compute_spectra(fields)
+            energy    = compute_spurious_mixing(fields)
+            enstrophy = calculate_Ω(fields)
+            N²        = calculate_N²(fields)
+            defradius = calculate_deformation_radius(fields)
+            # spectra   = compute_spectra(fields)
 
-            # energies[Symbol(prefix)] = energy
-            spectras[Symbol(prefix)] = spectra
-            # zonalmeans[Symbol(prefix)] = zonalmean
+            energies[Symbol(prefix)]    = energy
+            enstrophies[Symbol(prefix)] = enstrophy
+            stratif[Symbol(prefix)]     = N²
+            defradii[Symbol(prefix)]    = defradius
+            # spectras[Symbol(prefix)] = spectra
         end
     end
 
-    # jldopen("energies" * trailing_character * ".jld2","w") do f
-    #     for (key, value) in energies
-    #         f[string(key)] = value
-    #     end
-    # end
+    write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
+    write_file!("stratif" *     trailing_character * ".jld2", stratif)
+    write_file!("energies" *    trailing_character * ".jld2", energies) 
+    write_file!("defradii" *    trailing_character * ".jld2", defradii)
+    # write_file!("spectra" * trailing_character * ".jld2", spectras) 
+    
+    return nothing
+end
 
-    jldopen("spectra" * trailing_character * ".jld2","w") do f
-        for (key, value) in spectras
+function write_file!(name, var) 
+    jldopen(name,"w") do f
+        for (key, value) in var
             f[string(key)] = value
         end
     end
-    
-    return nothing
 end

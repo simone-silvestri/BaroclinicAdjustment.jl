@@ -63,3 +63,53 @@ function calculate_KE(var)
 
     return KE
 end
+
+function calculate_Ω(var)
+    Ω = Float64[]
+
+    vol = VolumeField(var[:u].grid)
+
+    @info "computing resting and available potential energy density..."
+    for t in 1:length(var[:u].times)
+        @info "doing time $t"
+        ζ = compute!(Field(VerticalVorticityOperation(var, t)^2 * vol))
+
+        push!(Ω, sum(interior(ζ)))
+    end
+
+    return Ω
+end
+
+function calculate_N²(var)    
+    N²avg = Float64[]
+
+    vol = VolumeField(var[:u].grid)
+    mean_vol = mean(vol)
+
+    @info "computing resting and available potential energy density..."
+    for t in 1:length(var[:u].times)
+        @info "doing time $t"
+        N² = compute!(Field(StratificationOperation(var, t) * vol))
+
+        push!(N²avg, mean(interior(N²)) / mean_vol)
+    end
+
+    return N²avg
+end
+
+function calculate_deformation_radius(var)    
+    LR = Float64[]
+
+    area = AreaField(var[:u].grid)
+    mean_area = mean(area)
+
+    @info "computing resting and available potential energy density..."
+    for t in 1:length(var[:u].times)
+        @info "doing time $t"
+        R = compute!(Field(DeformationRadius(var, t) * area))
+
+        push!(LR, mean(interior(R)) / mean_area)
+    end
+
+    return LR
+end
