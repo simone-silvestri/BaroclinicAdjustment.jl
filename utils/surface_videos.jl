@@ -118,7 +118,8 @@ function plot_all()
     figE = Figure(resolution = (400, 300))
     ax1 = Axis(figE[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
-              ylabel = "Integrated Kinetic Energy")
+              ylabel = "",
+              title = "Integrated Kinetic Energy")
         
     plot_stuff!(ax1, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
@@ -142,7 +143,8 @@ function plot_all()
     figR = Figure(resolution = (400, 300))
     ax2 = Axis(figR[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
-              ylabel = "Integrated Reference PE")
+              ylabel = "",
+              title = "Integrated Reference PE")
         
     plot_stuff!(ax2, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                      Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
@@ -172,7 +174,8 @@ function plot_all()
     figZ = Figure(resolution = (400, 300))
     ax3 = Axis(figZ[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
-              ylabel = "Integrated Enstrophy")
+              ylabel = "",
+              title = "Integrated Enstrophy")
         
     plot_stuff!(ax3, Zw4, Zl4, Zb4, Zw16, Zl16, Zb16, 
                      Rw4, Rl4, Rb4, Rw16, Rl16, Rb16, 
@@ -199,7 +202,8 @@ function plot_all()
     figS = Figure(resolution = (400, 300))
     ax4 = Axis(figS[1, 1], xgridvisible = false, ygridvisible = false, 
                xlabel = "days", 
-               ylabel = "Mean Stratification")
+               ylabel = "",
+               title = "Mean Stratification")
         
     plot_stuff!(ax4, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                      Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
