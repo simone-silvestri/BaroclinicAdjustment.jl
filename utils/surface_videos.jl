@@ -123,7 +123,7 @@ function plot_all()
     plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
-    axislegend!(axis, position = :rc)
+    axislegend(ax, position = :rc)
     record_video!("energy_video", fig, iter, 201)
 
     Ew4  = @lift(  en4["weno5dd"].RPE[1:$iter])
@@ -147,7 +147,7 @@ function plot_all()
     plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
-    axislegend!(axis, position = :lt)
+    axislegend(ax, position = :lt)
     record_video!("RPE_video", fig, iter, 201)
 
     en4  = jldopen("enstrophies_quarter.jld2")
@@ -174,7 +174,7 @@ function plot_all()
     plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
-    axislegend!(axis, position = :rt)
+    axislegend(ax, position = :rt)
     record_video!("Enstrophy_video", fig, iter, 201)
 
     en4  = jldopen("stratif_quarter.jld2")
