@@ -115,7 +115,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].KE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].KE[$iter:$iter])
 
-    figE = Figure(resolution = (550, 400))
+    figE = Figure(resolution = (400, 300))
     ax1 = Axis(figE[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Kinetic Energy")
@@ -139,7 +139,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].RPE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].RPE[$iter:$iter])
 
-    figR = Figure(resolution = (550, 400))
+    figR = Figure(resolution = (400, 300))
     ax2 = Axis(figR[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Reference PE")
@@ -169,7 +169,7 @@ function plot_all()
     Rl16 = @lift(z16["lapleith"][$iter:$iter])
     Rb16 = @lift(   z16["bilap"][$iter:$iter])
 
-    figZ = Figure(resolution = (550, 400))
+    figZ = Figure(resolution = (400, 300))
     ax3 = Axis(figZ[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Enstrophy")
@@ -196,7 +196,7 @@ function plot_all()
     Pl16 = @lift(s16["lapleith"][$iter:$iter])
     Pb16 = @lift(   s16["bilap"][$iter:$iter])
 
-    figS = Figure(resolution = (550, 400))
+    figS = Figure(resolution = (400, 300))
     ax4 = Axis(figS[1, 1], xgridvisible = false, ygridvisible = false, 
                xlabel = "days", 
                ylabel = "Mean Stratification")
