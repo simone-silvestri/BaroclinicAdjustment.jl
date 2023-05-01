@@ -115,16 +115,16 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].KE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].KE[$iter:$iter])
 
-    fig = Figure(resolution = (600, 400))
-    ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
+    figE = Figure(resolution = (550, 400))
+    ax1 = Axis(figE[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Kinetic Energy")
         
-    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
+    plot_stuff!(ax1, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
-    axislegend(ax, position = :rc)
-    record_video!("energy_video", fig, iter, 201)
+    axislegend(ax1, position = :rc)
+    record_video!("energy_video", figE, iter, 201)
 
     Ew4  = @lift(  en4["weno5dd"].RPE[1:$iter])
     El4  = @lift( en4["lapleith"].RPE[1:$iter])
@@ -139,67 +139,70 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].RPE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].RPE[$iter:$iter])
 
-    fig = Figure(resolution = (600, 400))
-    ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
+    figR = Figure(resolution = (550, 400))
+    ax2 = Axis(figR[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Reference PE")
         
-    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
-                    Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
-                    iter_arr, color1, color2, color3)
-    axislegend(ax, position = :lt)
-    record_video!("RPE_video", fig, iter, 201)
+    plot_stuff!(ax2, Ew4, El4, Eb4, Ew16, El16, Eb16, 
+                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
+                     iter_arr, color1, color2, color3)
+    axislegend(ax2, position = :lt)
+    record_video!("RPE_video", figR, iter, 201)
 
-    en4  = jldopen("enstrophies_quarter.jld2")
-    en16 = jldopen("enstrophies_sixteen.jld2")
+    close(en4)
+    close(en16)
 
-    Ew4  = @lift(  en4["weno5dd"][1:$iter])
-    El4  = @lift( en4["lapleith"][1:$iter])
-    Eb4  = @lift(    en4["bilap"][1:$iter])
-    Ew16 = @lift( en16["weno5dd"][1:$iter])
-    El16 = @lift(en16["lapleith"][1:$iter])
-    Eb16 = @lift(   en16["bilap"][1:$iter])
-    Pw4  = @lift(  en4["weno5dd"][$iter:$iter])
-    Pl4  = @lift( en4["lapleith"][$iter:$iter])
-    Pb4  = @lift(    en4["bilap"][$iter:$iter])
-    Pw16 = @lift( en16["weno5dd"][$iter:$iter])
-    Pl16 = @lift(en16["lapleith"][$iter:$iter])
-    Pb16 = @lift(   en16["bilap"][$iter:$iter])
+    z4  = jldopen("enstrophies_quarter.jld2")
+    z16 = jldopen("enstrophies_sixteen.jld2")
 
-    fig = Figure(resolution = (600, 400))
-    ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
+    Zw4  = @lift(  z4["weno5dd"][1:$iter])
+    Zl4  = @lift( z4["lapleith"][1:$iter])
+    Zb4  = @lift(    z4["bilap"][1:$iter])
+    Zw16 = @lift( z16["weno5dd"][1:$iter])
+    Zl16 = @lift(z16["lapleith"][1:$iter])
+    Zb16 = @lift(   z16["bilap"][1:$iter])
+    Rw4  = @lift(  z4["weno5dd"][$iter:$iter])
+    Rl4  = @lift( z4["lapleith"][$iter:$iter])
+    Rb4  = @lift(    z4["bilap"][$iter:$iter])
+    Rw16 = @lift( z16["weno5dd"][$iter:$iter])
+    Rl16 = @lift(z16["lapleith"][$iter:$iter])
+    Rb16 = @lift(   z16["bilap"][$iter:$iter])
+
+    figZ = Figure(resolution = (550, 400))
+    ax3 = Axis(figZ[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Enstrophy")
         
-    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
-                    Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
-                    iter_arr, color1, color2, color3)
-    axislegend(ax, position = :rt)
-    record_video!("Enstrophy_video", fig, iter, 201)
+    plot_stuff!(ax3, Zw4, Zl4, Zb4, Zw16, Zl16, Zb16, 
+                     Rw4, Rl4, Rb4, Rw16, Rl16, Rb16, 
+                     iter_arr, color1, color2, color3)
+    axislegend(ax3, position = :rt)
+    record_video!("Enstrophy_video", figZ, iter, 201)
 
-    en4  = jldopen("stratif_quarter.jld2")
-    en16 = jldopen("stratif_sixteen.jld2")
+    s4  = jldopen("stratif_quarter.jld2")
+    s16 = jldopen("stratif_sixteen.jld2")
 
-    Ew4  = @lift(  en4["weno5dd"][1:$iter])
-    El4  = @lift( en4["lapleith"][1:$iter])
-    Eb4  = @lift(    en4["bilap"][1:$iter])
-    Ew16 = @lift( en16["weno5dd"][1:$iter])
-    El16 = @lift(en16["lapleith"][1:$iter])
-    Eb16 = @lift(   en16["bilap"][1:$iter])
-    Pw4  = @lift(  en4["weno5dd"][$iter:$iter])
-    Pl4  = @lift( en4["lapleith"][$iter:$iter])
-    Pb4  = @lift(    en4["bilap"][$iter:$iter])
-    Pw16 = @lift( en16["weno5dd"][$iter:$iter])
-    Pl16 = @lift(en16["lapleith"][$iter:$iter])
-    Pb16 = @lift(   en16["bilap"][$iter:$iter])
+    Ew4  = @lift(  s4["weno5dd"][1:$iter])
+    El4  = @lift( s4["lapleith"][1:$iter])
+    Eb4  = @lift(    s4["bilap"][1:$iter])
+    Ew16 = @lift( s16["weno5dd"][1:$iter])
+    El16 = @lift(s16["lapleith"][1:$iter])
+    Eb16 = @lift(   s16["bilap"][1:$iter])
+    Pw4  = @lift(  s4["weno5dd"][$iter:$iter])
+    Pl4  = @lift( s4["lapleith"][$iter:$iter])
+    Pb4  = @lift(    s4["bilap"][$iter:$iter])
+    Pw16 = @lift( s16["weno5dd"][$iter:$iter])
+    Pl16 = @lift(s16["lapleith"][$iter:$iter])
+    Pb16 = @lift(   s16["bilap"][$iter:$iter])
 
-    fig = Figure(resolution = (600, 400))
-    ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
-              xlabel = "days", 
-              ylabel = "Mean Stratification")
+    figS = Figure(resolution = (550, 400))
+    ax4 = Axis(figS[1, 1], xgridvisible = false, ygridvisible = false, 
+               xlabel = "days", 
+               ylabel = "Mean Stratification")
         
-    plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
-                    Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
-                    iter_arr, color1, color2, color3)
-    record_video!("Stratif_video", fig, iter, 201)
+    plot_stuff!(ax4, Ew4, El4, Eb4, Ew16, El16, Eb16, 
+                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
+                     iter_arr, color1, color2, color3)
+    record_video!("Stratif_video", figS, iter, 201)
 end
