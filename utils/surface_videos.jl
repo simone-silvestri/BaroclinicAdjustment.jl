@@ -115,7 +115,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].KE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].KE[$iter:$iter])
 
-    fig = Figure(resolution = (400, 400))
+    fig = Figure(resolution = (600, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Kinetic Energy")
@@ -123,6 +123,7 @@ function plot_all()
     plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
+    axislegend!(axis, position = :rc)
     record_video!("energy_video", fig, iter, 201)
 
     Ew4  = @lift(  en4["weno5dd"].RPE[1:$iter])
@@ -138,7 +139,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"].RPE[$iter:$iter])
     Pb16 = @lift(   en16["bilap"].RPE[$iter:$iter])
 
-    fig = Figure(resolution = (400, 400))
+    fig = Figure(resolution = (600, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Reference PE")
@@ -146,6 +147,7 @@ function plot_all()
     plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
+    axislegend!(axis, position = :lt)
     record_video!("RPE_video", fig, iter, 201)
 
     en4  = jldopen("enstrophies_quarter.jld2")
@@ -164,7 +166,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"][$iter:$iter])
     Pb16 = @lift(   en16["bilap"][$iter:$iter])
 
-    fig = Figure(resolution = (400, 400))
+    fig = Figure(resolution = (600, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Integrated Enstrophy")
@@ -172,6 +174,7 @@ function plot_all()
     plot_stuff!(ax, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
+    axislegend!(axis, position = :rt)
     record_video!("Enstrophy_video", fig, iter, 201)
 
     en4  = jldopen("stratif_quarter.jld2")
@@ -190,7 +193,7 @@ function plot_all()
     Pl16 = @lift(en16["lapleith"][$iter:$iter])
     Pb16 = @lift(   en16["bilap"][$iter:$iter])
 
-    fig = Figure(resolution = (400, 400))
+    fig = Figure(resolution = (600, 400))
     ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "Mean Stratification")
