@@ -144,8 +144,7 @@ function plot_all()
     ax2 = Axis(figR[1, 1], xgridvisible = false, ygridvisible = false, 
               xlabel = "days", 
               ylabel = "",
-              title = "Integrated Reference PE",
-               yticks = ([0.9, 1.0], ["0.9", "1.0"]))
+              title = "Integrated Reference PE")
         
     plot_stuff!(ax2, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                      Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
