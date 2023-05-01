@@ -207,6 +207,6 @@ function plot_all()
     plot_stuff!(ax4, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                      Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                      iter_arr, color1, color2, color3)
-    axislegend(ax4, position = :rb, framevisible = false)
+    axislegend(ax4, position = :lt, framevisible = false)
     record_video!("Stratif_video", figS, iter, 201)
 end
