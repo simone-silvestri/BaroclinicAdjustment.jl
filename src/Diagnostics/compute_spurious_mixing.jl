@@ -12,9 +12,9 @@ function compute_rpe_density(var)
     @info "computing resting and available potential energy density..."
     for t in 1:length(ze.times)
         @info "doing time $t"
-        ρ = DensityField(var[:b][t])
+        ρ = DensityOperation(var[:b][t])
         set!(εe[t], ze[t] * ρ)
-        set!(αe[t], (- zfield - ze[t]) * ρ)
+        set!(αe[t], (zfield - ze[t]) * ρ)
     end
 
     return (; ze, εe, αe)
@@ -58,7 +58,7 @@ function calculate_KE(var)
         u = var[:u][t]
         ke = compute!(Field(@at (Center, Center, Center) (u^2 + v^2) * vol))
 
-        push!(KE, sum(interior(ke)))
+        push!(KE, 0.5 * sum(interior(ke)))
     end
 
     return KE
@@ -95,6 +95,23 @@ function calculate_N²(var)
     end
 
     return N²avg
+end
+
+function calculate_b_dissipation(var)    
+    b_diss = Float64[]
+
+    vol = VolumeField(var[:u].grid)
+    mean_vol = mean(vol)
+
+    @info "computing resting and available potential energy density..."
+    for t in 1:length(var[:u].times)
+        @info "doing time $t"
+        diss = compute!(Field(VerticalDissipationOperation(var, t) * vol))
+
+        push!(b_diss, mean(interior(diss)) / mean_vol)
+    end
+
+    return b_diss
 end
 
 function calculate_deformation_radius(var)    

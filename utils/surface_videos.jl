@@ -17,8 +17,8 @@ function record_video!(name, fig, iter, Nt)
 end
 
 function surface_videos(trailing_character = "_weaker")
-    file_prefix = ["weno5vd", "leith", "lapleith", "bilap",
-                   "smag", "weno5dd", "weno9", "weno9dd", "highres"]
+    file_prefix = ["weno7vd"] #, "weno9vd3"] #"weno5vd", "leith", "lapleith", "bilap",
+                   #"smag", "weno5dd", "weno9", "weno9dd", "highres"]
 
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
@@ -60,15 +60,15 @@ function surface_videos(trailing_character = "_weaker")
             hidespines!(ax)
             record_video!("buoyancy_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
 
-            @info "deformation radius video $filename"    
-            R = @lift(interior(DeformationRadius(f, $iter), :, :, 1))
+            # @info "deformation radius video $filename"    
+            # R = @lift(interior(DeformationRadius(f, $iter), :, :, 1))
 
-            fig = Figure()
-            ax  = Axis(fig[1, 1])
-            heatmap!(ax, R, colorrange = (1e1, 1e4), colormap = :thermometer)
-            hidedecorations!(ax)
-            hidespines!(ax)
-            record_video!("Lr_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
+            # fig = Figure()
+            # ax  = Axis(fig[1, 1])
+            # heatmap!(ax, R, colorrange = (1e1, 1e4), colormap = :thermometer)
+            # hidedecorations!(ax)
+            # hidespines!(ax)
+            # record_video!("Lr_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
         end
     end
 end
@@ -99,7 +99,7 @@ function plot_all()
     color2 = :orange1
     color3 = :firebrick2
 
-    en4  = jldopen("energies_quarter.jld2")
+    en4  = jldopen("energies_eight.jld2")
     en16 = jldopen("energies_sixteen.jld2")
 
     Ew4  = @lift(  en4["weno5dd"].KE[1:$iter] .* 1e3)
@@ -125,7 +125,7 @@ function plot_all()
                     Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                     iter_arr, color1, color2, color3)
     axislegend(ax1, position = :rc, framevisible = false)
-    record_video!("energy_video", figE, iter, 201)
+    record_video!("energy_video2", figE, iter, 201)
 
     Ew4  = @lift(  en4["weno5dd"].RPE[1:$iter] .-  en4["weno5dd"].RPE[1] ) # ./ 1.538 ./ 1e21)
     El4  = @lift( en4["lapleith"].RPE[1:$iter] .- en4["lapleith"].RPE[1] ) # ./ 1.538 ./ 1e21)
@@ -149,7 +149,7 @@ function plot_all()
     plot_stuff!(ax2, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                      Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                      iter_arr, color1, color2, color3)
-    record_video!("RPE_video", figR, iter, 201)
+    record_video!("RPE_video2", figR, iter, 201)
 
     Ew4  = @lift(  en4["weno5dd"].APE[1:$iter] .-  en4["weno5dd"].APE[1]) # ./ 1.538 ./ 1e21)
     El4  = @lift( en4["lapleith"].APE[1:$iter] .- en4["lapleith"].APE[1]) # ./ 1.538 ./ 1e21)
@@ -173,12 +173,12 @@ function plot_all()
     plot_stuff!(ax2, Ew4, El4, Eb4, Ew16, El16, Eb16, 
                      Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                      iter_arr, color1, color2, color3)
-    record_video!("APE_video", figR, iter, 201)
+    record_video!("APE_video2", figR, iter, 201)
 
     close(en4)
     close(en16)
 
-    z4  = jldopen("enstrophies_quarter.jld2")
+    z4  = jldopen("enstrophies_eight.jld2")
     z16 = jldopen("enstrophies_sixteen.jld2")
 
     Zw4  = @lift(  z4["weno5dd"][1:$iter] ./ 1e6)
@@ -204,9 +204,9 @@ function plot_all()
                      Rw4, Rl4, Rb4, Rw16, Rl16, Rb16, 
                      iter_arr, color1, color2, color3)
     # axislegend(ax3, position = :rt, framevisible = false)
-    record_video!("Enstrophy_video", figZ, iter, 201)
+    record_video!("Enstrophy_video2", figZ, iter, 201)
 
-    s4  = jldopen("stratif_quarter.jld2")
+    s4  = jldopen("stratif_eight.jld2")
     s16 = jldopen("stratif_sixteen.jld2")
 
     Ew4  = @lift(  s4["weno5dd"][1:$iter] ./ 1e-6)
@@ -233,5 +233,5 @@ function plot_all()
                      Pw4, Pl4, Pb4, Pw16, Pl16, Pb16, 
                      iter_arr, color1, color2, color3)
     axislegend(ax4, position = :lt, framevisible = false)
-    record_video!("Stratif_video", figS, iter, 201)
+    record_video!("Stratif_video2", figS, iter, 201)
 end

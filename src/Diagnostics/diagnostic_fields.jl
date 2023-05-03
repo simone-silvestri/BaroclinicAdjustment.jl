@@ -7,26 +7,33 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
 VerticalVorticityField(fields::Dict, i) = VerticalVorticityField((; u = fields[:u][i], v = fields[:v][i]))
-KineticEnergyField(fields::Dict, i)     = KineticEnergyField((; u = fields[:u][i], v = fields[:v][i]))
+KineticEnergyField(fields::Dict, i)     =     KineticEnergyField((; u = fields[:u][i], v = fields[:v][i]))
 
-VerticalVorticityOperation(fields::Dict, i)  =  VerticalVorticityOperation((; u = fields[:u][i], v = fields[:v][i]))
-PotentialVorticityOperation(fields::Dict, i) = PotentialVorticityOperation((; u = fields[:u][i], v = fields[:v][i], b = fields[:b][i]))
-KineticEnergyOperation(fields::Dict, i)      =      KineticEnergyOperation((; u = fields[:u][i], v = fields[:v][i]))
-StratificationOperation(fields::Dict, i)     =     StratificationOperation(fields[:b][i])
+VerticalVorticityOperation(fields::Dict, i)   =   VerticalVorticityOperation((; u = fields[:u][i], v = fields[:v][i]))
+PotentialVorticityOperation(fields::Dict, i)  =  PotentialVorticityOperation((; u = fields[:u][i], v = fields[:v][i], b = fields[:b][i]))
+VerticalDissipationOperation(fields::Dict, i) = VerticalDissipationOperation((; u = fields[:u][i], v = fields[:v][i], b = fields[:b][i]))
+KineticEnergyOperation(fields::Dict, i)       =       KineticEnergyOperation((; u = fields[:u][i], v = fields[:v][i]))
+StratificationOperation(fields::Dict, i)      =      StratificationOperation(fields[:b][i])
 
 MetricField(loc, grid, metric; indices = default_indices(3)) = compute!(Field(GridMetricOperation(loc, metric, grid); indices))
 
 VolumeField(grid, loc=(Center, Center, Center);  indices = default_indices(3)) = MetricField(loc, grid, Oceananigans.AbstractOperations.volume; indices)
   AreaField(grid, loc=(Center, Center, Nothing); indices = default_indices(3)) = MetricField(loc, grid, Oceananigans.AbstractOperations.Az; indices)
 
-DensityField(b::Field; ρ₀ = 1000.0, g = 9.80655) = compute!(Field(ρ₀ * (1 - g * b)))
+@inline _density_operation(i, j, k, grid, b, ρ₀, g) = ρ₀ * (1 - b[i, j, k] / g)
+
+DensityOperation(b; ρ₀ = 1000.0, g = 9.80655) = 
+    KernelFunctionOperation{Center, Center, Center}(_density_operation, b.grid, b, ρ₀, g)
+
+DensityField(b::Field; ρ₀ = 1000.0, g = 9.80655) = compute!(Field(DensityOperation(b; ρₒ, g)))
 
 function HeightField(grid, loc = (Center, Center, Center))  
 
     zf = Field(loc, grid)
+    Lz = grid.Lz
 
     for k in 1:size(zf, 3)
-        interior(zf, :, :, k) .= znode(k, grid, loc[3]())
+        interior(zf, :, :, k) .= Lz + znode(k, grid, loc[3]())
     end
 
     return zf
@@ -148,5 +155,25 @@ function HorizontalFriction(fields::NamedTuple, closure)
     τ₃ = compute!(Field(∂ⱼ_τ₃ⱼ_op))
 
     return (; τ₁, τ₂, τ₃)
+end
+
+function VerticalDissipationOperation(fields::NamedTuple)
+
+    grid          = fields.b.grid
+    clock         = Clock{eltype(grid)}(0, 0, 1)
+    diffusivities = nothing
+    closure       = VerticalScalarDiffusivity(κ = 1e-5)
+    buoyancy      = BuoyancyTracer()
+    velocities    = (; u = fields.u, v = fields.v, w = nothing)
+    free_surface  = nothing
+    tracers       = (; b = fields.b)
+    auxiliary_fields = NamedTuple()
+
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+    computed_dependencies = (closure, diffusivities, Val(1), clock, model_fields, buoyancy)
+
+    ∇_dot_qᶜ_op = KernelFunctionOperation{Face, Center, Center}(∇_dot_qᶜ, grid, computed_dependencies...)
+
+    return ∇_dot_qᶜ_op
 end
 

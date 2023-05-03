@@ -10,6 +10,7 @@ using BaroclinicAdjustment.Diagnostics: compute_rpe_density,
                                         calculate_Ω,
                                         calculate_N²,
                                         calculate_deformation_radius,
+                                        calculate_b_dissipation,
                                         compute_spectra
 
 using JLD2
@@ -52,6 +53,7 @@ function calculate_diagnostics(trailing_character = "_weaker")
     filenames = add_trailing_name.(filenames)
 
     energies  = Dict()
+    vardiss   = Dict()
     spectras  = Dict()
     defradii  = Dict()
 
@@ -65,25 +67,30 @@ function calculate_diagnostics(trailing_character = "_weaker")
             fields = all_fieldtimeseries(filename; arch = CPU())
 
             GC.gc()
-            energy    = compute_spurious_mixing(fields)
+            energy   = compute_spurious_mixing(fields)
+            variance = calculate_b_dissipation(fields)
             enstrophy = calculate_Ω(fields)
             N²        = calculate_N²(fields)
             defradius = calculate_deformation_radius(fields)
-            # spectra   = compute_spectra(fields)
+            # if length(fields[:u].times) > 110
+            #     spectra   = compute_spectra(fields, 100:104)
+            #     spectras[Symbol(prefix)] = spectra
+            # end
 
-            energies[Symbol(prefix)]    = energy
+            energies[Symbol(prefix)]  = energy
+            vardiss[Symbol(prefix)]   = variance
             enstrophies[Symbol(prefix)] = enstrophy
             stratif[Symbol(prefix)]     = N²
             defradii[Symbol(prefix)]    = defradius
-            # spectras[Symbol(prefix)] = spectra
         end
     end
 
     write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
     write_file!("stratif" *     trailing_character * ".jld2", stratif)
     write_file!("energies" *    trailing_character * ".jld2", energies) 
+    write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
     write_file!("defradii" *    trailing_character * ".jld2", defradii)
-    # write_file!("spectra" * trailing_character * ".jld2", spectras) 
+    write_file!("spectra" *     trailing_character * ".jld2", spectras) 
     
     return nothing
 end

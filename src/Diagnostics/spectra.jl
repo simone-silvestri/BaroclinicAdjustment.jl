@@ -51,7 +51,8 @@ function power_spectrum_1d_x(var, x, y; windowing = onefunc)
 end
 
 function power_spectrum_1d_x(var, x; windowing = onefunc)
-    Nx  = length(x)
+
+    Nx = length(x)
     Nfx = Int64(Nx)
     
     spectra = zeros(ComplexF64, Int(Nfx/2))
@@ -76,9 +77,27 @@ end
 
     Nx = size(grid, 1)
 
-    Uspec[time, j, k] = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx])
-    Vspec[time, j, k] = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx])
-    Ωspec[time, j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx])
+    Uspec[time, j, k] = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx]  )
+    Vspec[time, j, k] = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx]  )
+    Ωspec[time, j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx-1])
+end
+
+@kernel function _compute_zonal_spectra!(Uspec, Vspec, Ωspec, grid, u, v, ζ)
+    j, k = @index(Global, NTuple)
+
+    Nx = size(grid, 1)
+
+    Uspec[j, k] = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx])
+    Vspec[j, k] = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx])
+    Ωspec[j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx])
+end
+
+@kernel function _update_spectra!(Ufinal, Vfinal, Ωfinal, Uspec, Vspec, Ωspec)
+    j, k = @index(Global, NTuple)
+
+    Ufinal[j, k].spec .+= Uspec[j, k].spec
+    Vfinal[j, k].spec .+= Vspec[j, k].spec
+    Ωfinal[j, k].spec .+= Ωspec[j, k].spec
 end
 
 function compute_spectra(f::Dict)
@@ -101,4 +120,39 @@ function compute_spectra(f::Dict)
     end
 
     return (; Uspec, Vspec, Ωspec)
+end
+
+function compute_spectra(f::Dict, time)
+    grid = f[:u].grid
+
+    Nx, Ny, Nz = size(grid)
+
+    Ufinal = Array{Spectrum}(undef, Ny, Nz)
+    Vfinal = Array{Spectrum}(undef, Ny, Nz)
+    Ωfinal = Array{Spectrum}(undef, Ny, Nz)
+
+    Uspec = Array{Spectrum}(undef, Ny, Nz)
+    Vspec = Array{Spectrum}(undef, Ny, Nz)
+    Ωspec = Array{Spectrum}(undef, Ny, Nz)
+
+    u = f[:u][time[1]]
+    v = f[:v][time[1]]
+    ζ = compute!(Field(VerticalVorticityOperation(f, time[1])))
+    Nx, Ny, Nz = size(ζ)
+    launch!(CPU(), grid, (Ny, Nz), _compute_zonal_spectra!, Ufinal, Vfinal, Ωfinal, grid, u, v, ζ)
+
+    @show length(time)
+    if length(time) > 1
+        for t in time[2:end]
+            @info "doing time $time"
+            u = f[:u][t]
+            v = f[:v][t]
+            ζ = compute!(Field(VerticalVorticityOperation(f, t)))
+            Nx, Ny = size(ζ)
+            launch!(CPU(), grid, (Ny, Nz), _compute_zonal_spectra!, Uspec, Vspec, Ωspec, grid, u, v, ζ)
+            launch!(CPU(), grid, (Ny, Nz), _update_spectra!, Ufinal, Vfinal, Ωfinal, Uspec, Vspec, Ωspec)
+        end
+    end
+    
+    return (; Ufinal, Vfinal, Ωfinal)
 end
