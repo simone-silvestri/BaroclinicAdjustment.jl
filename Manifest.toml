@@ -2,7 +2,7 @@
 
 julia_version = "1.8.0"
 manifest_format = "2.0"
-project_hash = "8bbeb4cfca3211d1448239efa75542067ed8d23d"
+project_hash = "dbedf98496ddc5f9d49dcee8b3549b43a126f243"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -57,9 +57,9 @@ version = "0.1.2"
 
 [[deps.CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "KernelAbstractions", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Preferences", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "8547829ee0da896ce48a24b8d2f4bf929cf3e45e"
+git-tree-sha1 = "280893f920654ebfaaaa1999fbd975689051f890"
 uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "4.1.4"
+version = "4.2.0"
 
 [[deps.CUDA_Driver_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
@@ -75,9 +75,9 @@ version = "0.2.2"
 
 [[deps.CUDA_Runtime_jll]]
 deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "81eed046f28a0cdd0dc1f61d00a49061b7cc9433"
+git-tree-sha1 = "5248d9c45712e51e27ba9b30eebec65658c6ce29"
 uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
-version = "0.5.0+2"
+version = "0.6.0+0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
@@ -414,9 +414,7 @@ version = "1.2.0"
 
 [[deps.Oceananigans]]
 deps = ["Adapt", "CUDA", "Crayons", "CubedSphere", "Dates", "DocStringExtensions", "FFTW", "Glob", "IncompleteLU", "InteractiveUtils", "IterativeSolvers", "JLD2", "KernelAbstractions", "LinearAlgebra", "Logging", "MPI", "NCDatasets", "OffsetArrays", "OrderedCollections", "PencilArrays", "PencilFFTs", "Pkg", "Printf", "Random", "Rotations", "SeawaterPolynomials", "SparseArrays", "Statistics", "StructArrays"]
-git-tree-sha1 = "60ce544bea0191f5e8f2b640551eb478bc2b0a47"
-repo-rev = "ss/new_upwinding"
-repo-url = "https://github.com/CliMA/Oceananigans.jl.git"
+path = "/home/ssilvest/stable_oceananigans/testOceananigans.jl/"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 version = "0.81.0"
 

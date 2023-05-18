@@ -46,9 +46,12 @@ function compute_zonal_mean(f::Dict)
 end
 
 function calculate_diagnostics(trailing_character = "_weaker")
-    file_prefix = ["weno5vd", "leith", "lapleith", "bilap",
-                   "smag", "weno5dd", "weno5vv", "weno9", "weno9dd",
-                   "qgleith", "highres"]
+    # file_prefix = ["weno9vd", "leith", "lapleith", "bilap", "weno5dd"]
+                #, "smag", "weno5dd", "weno5vv", "weno9", "weno9dd",
+                #    "qgleith", "highres"]
+                   file_prefix = ["weno9v4_smoothed"]
+
+    @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
 
@@ -68,37 +71,46 @@ function calculate_diagnostics(trailing_character = "_weaker")
 
             GC.gc()
             energy   = compute_spurious_mixing(fields)
-            variance = calculate_b_dissipation(fields)
+            # variance = calculate_b_dissipation(fields)
             enstrophy = calculate_Ω(fields)
             N²        = calculate_N²(fields)
-            defradius = calculate_deformation_radius(fields)
-            # if length(fields[:u].times) > 110
-            #     spectra   = compute_spectra(fields, 100:104)
-            #     spectras[Symbol(prefix)] = spectra
-            # end
+            # defradius = calculate_deformation_radius(fields)
+            if length(fields[:u].times) > 110
+                spectra = compute_spectra(fields, 100:104)
+                spectras[Symbol(prefix)] = spectra
+            end
 
-            energies[Symbol(prefix)]  = energy
-            vardiss[Symbol(prefix)]   = variance
+            energies[Symbol(prefix)]    = energy
+            # vardiss[Symbol(prefix)]   = variance
             enstrophies[Symbol(prefix)] = enstrophy
             stratif[Symbol(prefix)]     = N²
-            defradii[Symbol(prefix)]    = defradius
+            # defradii[Symbol(prefix)]    = defradius
         end
     end
 
     write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
     write_file!("stratif" *     trailing_character * ".jld2", stratif)
-    write_file!("energies" *    trailing_character * ".jld2", energies) 
-    write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
-    write_file!("defradii" *    trailing_character * ".jld2", defradii)
-    write_file!("spectra" *     trailing_character * ".jld2", spectras) 
+    write_file!("energies" *    trailing_character * ".jld2", energies)
+    # write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
+    # write_file!("defradii" *    trailing_character * ".jld2", defradii)
+    write_file!("spectra" *     trailing_character * ".jld2", spectras)
     
     return nothing
 end
 
 function write_file!(name, var) 
-    jldopen(name,"w") do f
-        for (key, value) in var
-            f[string(key)] = value
+    if isfile(name)
+        jldopen(name,"r+") do f
+            for (key, value) in var
+                f[string(key)] = value
+            end
+        end
+    else
+        jldopen(name,"w") do f
+            for (key, value) in var
+                f[string(key)] = value
+            end
         end
     end
+    return nothing
 end

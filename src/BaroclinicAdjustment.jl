@@ -10,6 +10,7 @@ using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.Advection: VelocityStencil, DefaultStencil
 using KernelAbstractions: @kernel, @index
 using JLD2
+using Random
 
 include("horizontal_visc.jl")
 include("qg_leith_viscosity.jl")
@@ -35,14 +36,14 @@ function set_geostrophic_velocity!(u, b, coriolis)
     return nothing
 end
 
-function barotropic_substeps(Δt, grid, gravitational_acceleration)
+function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.5)
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
     
     Δx = minimum_xspacing(grid)
     Δy = minimum_yspacing(grid)
     Δ  = 1 / sqrt(1 / Δx^2 + 1 / Δy^2)
 
-    return  Base.Int(ceil(2 * Δt / (0.7 / wave_speed * Δ)))
+    return  Base.Int(ceil(2 * Δt / (CFL / wave_speed * Δ)))
 end
 
 function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(), 
@@ -74,11 +75,11 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
                                halo = (6, 6))
     end
 
-    coriolis = BetaPlane(latitude = -45)
+    coriolis = BetaPlane(latitude = -50)
 
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
                                                                convective_νz = zero(grid),
-                                                               background_κz = 1e-4,
+                                                               background_κz = 1e-5,
                                                                background_νz = 1e-4)
 
     
@@ -106,10 +107,10 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     Δy = 100kilometers
     ϵb = 1e-2 * Δb # noise amplitude
 
+    Random.seed!(1234)
     bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
         
     set!(model, b=bᵢ)
-    # set_geostrophic_velocity!(model.velocities.u, model.tracers.b, model.coriolis)
 
     #####
     ##### Simulation building
@@ -118,7 +119,7 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
+    wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10minutes)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     # add progress callback
@@ -178,24 +179,24 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
                                      halo = (6, 6))
     end
 
-    coriolis = HydrostaticSphericalCoriolis()
-
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
                                                                convective_νz = zero(grid),
                                                                background_κz = 1e-5,
-                                                               background_νz = 1e-5)
+                                                               background_νz = 1e-4)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
     gravity = Oceananigans.BuoyancyModels.g_Earth
-    substeps = barotropic_substeps(20minutes, grid, gravity)
+    max_Δt = 10minutes
+
+    substeps = barotropic_substeps(max_Δt, grid, gravity)
 
     free_surface = SplitExplicitFreeSurface(; substeps)
     @info "running with substeps $substeps"
     @info "Building a model..."
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                        coriolis,
+                                        coriolis = HydrostaticSphericalCoriolis(),
                                         buoyancy = BuoyancyTracer(),
                                         closure = closures,
                                         tracers = :b,
@@ -219,6 +220,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
     Δb = 0.006
     ϵb = 1e-2 * Δb # noise amplitude
 
+    Random.seed!(1234)
     bᵢ(x, y, z) = N² * z + Δb * ramp(x, y, Δy) + ϵb * randn()
     
     set!(model, b=bᵢ)
@@ -230,7 +232,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes, min_Δt = 25)
+    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt, min_Δt = 15)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     # add progress callback
@@ -268,14 +270,23 @@ advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
 add_trailing_characters(name, trailing_character = "_weaker") = name * trailing_character
 
+using Oceananigans.Advection: HybridOrderWENO, FluxForm
+
 function run_simulations(resolution; trailing_character = "_weaker")
 
     vi1 = VectorInvariant()
-    vi2 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO())
-    vi3 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
-    vi4 = VectorInvariant(vorticity_scheme = WENO(), divergence_scheme = WENO(), vertical_scheme = WENO(), divergence_stencil = VelocityStencil())
-    vi5 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO())
-    vi6 = VectorInvariant(vorticity_scheme = WENO(order = 9), divergence_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+    vi2 = VectorInvariant(vorticity_scheme = WENO(), vertical_scheme = WENO())
+    vi3 = VectorInvariant(vorticity_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+    vi4 = VectorInvariant(vorticity_scheme = WENO(order = 7), vertical_scheme = WENO())
+    vi5 = VectorInvariant(vorticity_scheme = WENO(order = 7), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+    vi6 = VectorInvariant(vorticity_scheme = WENO(order = 9), vertical_scheme = WENO())
+    vi7 = VectorInvariant(vorticity_scheme = WENO(order = 9), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+
+    vi8 = VectorInvariant(vorticity_scheme = HybridOrderWENO(high_order = 9, mid_order = 7, low_order = 5), vertical_scheme = WENO())
+
+    vi9  = FluxForm(; advection = WENO())
+    vi10 = FluxForm(; advection = WENO(order = 7))
+    vi11 = FluxForm(; advection = WENO(order = 9))
 
     hi1 = nothing
     hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
@@ -284,14 +295,18 @@ function run_simulations(resolution; trailing_character = "_weaker")
     hi5 = smagorinski_viscosity(HorizontalFormulation())
     hi6 = QGLeithViscosity()
 
-    advection_schemes   = [vi1, vi2, vi1, vi1, vi1, vi3, vi4, vi5, vi1, vi6]
-    horizontal_closures = [hi2, hi1, hi3, hi4, hi5, hi1, hi1, hi1, hi6, hi1]
+    advection_schemes   = [vi1, vi1, vi1, vi1, vi1, vi2, vi3, vi4, vi5, vi6, vi7, vi8, vi9, vi10, vi11]
+    horizontal_closures = [hi2, hi3, hi4, hi5, hi6, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1,  hi1]
 
-    names = ["bilap", "weno5vd", "leith", "lapleith", "smag", "weno5dd", "weno5vv", "weno9", "qgleith", "weno9dd"]
+    names = ["bilap", "leith", "lapleith", "smag", "qgleith", 
+             "weno5v", "weno5d", "weno7v", "weno7d", "weno9v", "weno9d", "wenoHv",
+             "weno5F", "weno7F", "weno9F"]
+             
     names = add_trailing_characters.(names, Ref(trailing_character))
     
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-        baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure)
+        @show name, momentum_advection, horizontal_closure
+        baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure, arch = GPU())
     end
 
     return nothing
@@ -299,17 +314,20 @@ end
 
 function run_high_res_simulation(resolution; trailing_character = "_weaker")
 
+    hi1 = nothing
+    hi2 = leith_viscosity(HorizontalFormulation())
+    
     vi1 = VectorInvariant()
+    vi2 = VectorInvariant(vorticity_scheme = WENO(), vertical_scheme = WENO())
 
-    hi4 = leith_laplacian_viscosity(HorizontalFormulation(), C_vort = 2.0, C_div = 2.0)
+    advection_schemes   = [vi1, vi2]
+    horizontal_closures = [hi1, hi2]
 
-    advection_schemes   = [vi1]
-    horizontal_closures = [hi4]
-
-    names = ["highres"]
+    names = ["leith", "weno5v"]
     names = add_trailing_characters.(names, Ref(trailing_character))
 
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
+        @show name, momentum_advection, horizontal_closure
         baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure)
     end
 
@@ -325,7 +343,14 @@ function run_all(resolutions; trailing_character = ["_weaker"])
     for (res, char) in zip(resolutions, trailing_character)
         run_simulations(res; trailing_character = char)
     end
-    run_high_res_simulation(1/50; trailing_character = "_final")
+    run_high_res_simulation(1/50; trailing_character = "_fifty")
+end
+
+function run_all_rectilinear(resolutions; trailing_character = ["_weaker"])
+    for (res, char) in zip(resolutions, trailing_character)
+        run_simulations(res; trailing_character = char)
+    end
+    run_high_res_simulation(1/50; trailing_character = "_fifty")
 end
 
 include("Diagnostics/Diagnostics.jl")
