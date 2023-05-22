@@ -61,11 +61,11 @@ end
     return (∂xδ^2 + ∂yδ^2)
 end
 
-@inline ∂yb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
+@inline ∂yb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis)^2 / 
                                                                           max(1e-20, ∂z_b(i, j, k, grid, buoyancy, tracers)) *
                                                                           ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
 
-@inline ∂xb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
+@inline ∂xb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis)^2 / 
                                                                           max(1e-20, ∂z_b(i, j, k, grid, buoyancy, tracers))  *
                                                                           ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
 
