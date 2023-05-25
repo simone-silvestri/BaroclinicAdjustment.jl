@@ -77,9 +77,9 @@ end
 
     Nx = size(grid, 1)
 
-    Uspec[time, j, k] = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx]  )
-    Vspec[time, j, k] = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx]  )
-    Ωspec[time, j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx-1])
+    Uspec[time, j, k] = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx])
+    Vspec[time, j, k] = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx])
+    Ωspec[time, j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx])
 end
 
 @kernel function _compute_zonal_spectra!(Uspec, Vspec, Ωspec, grid, u, v, ζ)

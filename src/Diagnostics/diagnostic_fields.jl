@@ -2,7 +2,7 @@ using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: hydrostatic_fields
 using Oceananigans.Coriolis: fᶠᶠᵃ
-using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, AbstractScalarBiharmonicDiffusivity
+using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ, AbstractScalarBiharmonicDiffusivity
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
@@ -174,6 +174,6 @@ function VerticalDissipationOperation(fields::NamedTuple)
 
     ∇_dot_qᶜ_op = KernelFunctionOperation{Face, Center, Center}(∇_dot_qᶜ, grid, computed_dependencies...)
 
-    return ∇_dot_qᶜ_op
+    return ∇_dot_qᶜ_op * fields.b
 end
 

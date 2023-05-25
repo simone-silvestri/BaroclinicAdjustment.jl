@@ -1,10 +1,12 @@
 using Oceananigans
 using KernelAbstractions: @index, @kernel
+using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.TurbulenceClosures:
         tapering_factorᶠᶜᶜ,
         tapering_factorᶜᶠᶜ,
         tapering_factorᶜᶜᶠ,
+        tapering_factor,
         SmallSlopeIsopycnalTensor,
         AbstractScalarDiffusivity,
         ExplicitTimeDiscretization,
@@ -29,16 +31,16 @@ using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
 
 using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ
 
-struct QGLeithViscosity{A, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
-    C :: A
+struct QGLeith{FT, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
+    C :: FT
     isopycnal_tensor :: M
     slope_limiter :: S
 end
 
-QGLeithViscosity(; C=1.0, isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
-    QGLeithViscosity(C, isopycnal_model, slope_limiter) 
+QGLeith(FT::DataType = Float64; C=FT(1.0), isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
+    QGLeith(C, isopycnal_model, slope_limiter) 
 
-DiffusivityFields(grid, tracer_names, bcs, ::QGLeithViscosity) = 
+DiffusivityFields(grid, tracer_names, bcs, ::QGLeith) = 
                 (; νₑ = CenterField(grid),
                    Ld = Field{Center, Center, Nothing}(grid))
 
@@ -61,11 +63,11 @@ end
     return (∂xδ^2 + ∂yδ^2)
 end
 
-@inline ∂yb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis)^2 / 
+@inline ∂yb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
                                                                           max(1e-20, ∂z_b(i, j, k, grid, buoyancy, tracers)) *
                                                                           ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
 
-@inline ∂xb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis)^2 / 
+@inline ∂xb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
                                                                           max(1e-20, ∂z_b(i, j, k, grid, buoyancy, tracers))  *
                                                                           ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
 
@@ -80,7 +82,7 @@ end
 "Return the filter width for a Leith Diffusivity on a general grid."
 @inline Δ²ᶜᶜᶜ(i, j, k, grid) =  2 * (1 / (1 / Δxᶜᶜᶜ(i, j, k, grid)^2 + 1 / Δyᶜᶜᶜ(i, j, k, grid)^2))
 
-@kernel function calculate_qgleith_viscosity!(ν, grid, Ld, closure, velocities, tracers, buoyancy, coriolis)
+@kernel function calculate_qgleith_viscosity!(ν, Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
     i, j, k = @index(Global, NTuple)
 
     ∂ζ² =  abs²_∇h_ζ(i, j, k, grid, coriolis, velocities)
@@ -94,7 +96,7 @@ end
 
     C = closure.C
 
-    @inbounds ν[i, j, k] = (C *  A/ π)^(3 / 2) * sqrt(∂Q² + ∂δ²) 
+    @inbounds ν[i, j, k] = (C *  A^(0.5) / π)^(3) * sqrt(∂Q² + ∂δ²) 
 end
 
 @inline _deformation_radius(i, j, k, grid, C, buoyancy, coriolis) = sqrt(max(0, ∂z_b(i, j, k, grid, buoyancy, C))) / π /
@@ -112,7 +114,7 @@ end
     end
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::QGLeithViscosity, model)
+function calculate_diffusivities!(diffusivity_fields, closure::QGLeith, model)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -130,14 +132,62 @@ function calculate_diffusivities!(diffusivity_fields, closure::QGLeithViscosity,
     return nothing
 end
 
-@inline viscosity(::QGLeithViscosity, K) = K.νₑ
-@inline diffusivity(::QGLeithViscosity, K, ::Val{id}) where id = K.νₑ   
+@inline viscosity(::QGLeith, K) = K.νₑ
+@inline diffusivity(::QGLeith, K, ::Val{id}) where id = K.νₑ   
 
 #####
 ##### Abstract Smagorinsky functionality
 #####
 
-# Diffusive fluxes for Leith diffusivities
-@inline diffusive_flux_x(i, j, k, grid, closure::QGLeithViscosity, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
-@inline diffusive_flux_y(i, j, k, grid, closure::QGLeithViscosity, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
-@inline diffusive_flux_z(i, j, k, grid, closure::QGLeithViscosity, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, closure::QGLeith, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, closure::QGLeith, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, closure::QGLeith, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+
+#=
+@inline function diffusive_flux_x(i, j, k, grid, closure::QGLeith, diffusivities, 
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+
+    νₑ    = diffusivities.νₑ
+    νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
+    ∂x_c  = ∂xᶠᶜᶜ(i, j, k, grid, c)
+
+    ϵ = tapering_factor(i, j, k, grid, closure, fields, buoyancy)
+
+    return - νₑⁱʲᵏ * ϵ * ∂x_c
+end
+
+@inline function diffusive_flux_y(i, j, k, grid, closure::QGLeith, diffusivities,
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+
+    νₑ    = diffusivities.νₑ
+    νₑⁱʲᵏ = ℑyᶠᵃᵃ(i, j, k, grid, νₑ)
+    ∂y_c  = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    
+    ϵ = tapering_factor(i, j, k, grid, closure, fields, buoyancy)
+
+    return - νₑⁱʲᵏ * ϵ * ∂y_c
+end
+
+@inline function diffusive_flux_z(i, j, k, grid, closure::QGLeith, diffusivities, 
+                                  ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
+
+    νₑ = diffusivities.νₑ
+
+    νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
+
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
+
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_model)
+
+    ϵ = tapering_factor(i, j, k, grid, closure, fields, buoyancy)
+
+    return - νₑⁱʲᵏ * ϵ * (
+        2 * R₃₁ * ∂x_c +
+        2 * R₃₂ * ∂y_c + 
+            R₃₃ * ∂z_c)
+end
+=#

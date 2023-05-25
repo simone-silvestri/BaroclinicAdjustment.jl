@@ -37,10 +37,10 @@ function geographic2cartesian(λ, φ, r=1)
 end
 
 function surface_videos(trailing_character = "_weaker")
-    # file_prefix = ["leith", "lapleith", "bilap", "weno5vd",
-    #                "smag", "weno5dd", "weno9", "weno9dd", "highres"]
 
-    file_prefix = ["weno9v4_smoothed"] #, "lapleith"]
+    file_prefix = ["bilap", "leith", "lapleith", "smag", "qgleith",
+                   "weno5v", "weno5d", "weno7v", "weno7d", "weno9v", "weno9d", "wenoHv", "weno9MD",
+                   "weno5F", "weno7F", "weno9F"]
 
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
@@ -114,15 +114,6 @@ function surface_videos(trailing_character = "_weaker")
             hidespines!(ax)
             record_video!("buoyancy_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
 
-            # @info "deformation radius video $filename"    
-            # R = @lift(interior(DeformationRadius(f, $iter), :, :, 1))
-
-            # fig = Figure()
-            # ax  = Axis(fig[1, 1])
-            # heatmap!(ax, R, colorrange = (1e1, 1e4), colormap = :thermometer)
-            # hidedecorations!(ax)
-            # hidespines!(ax)
-            # record_video!("Lr_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
         end
     end
 end

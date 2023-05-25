@@ -150,9 +150,10 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     return nothing
 end
     
-function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(), 
+function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = FLoat64; arch = GPU(), 
                                                      horizontal_closure = nothing,
                                                      momentum_advection = VectorInvariant(), 
+                                                     background_νz = 1e-4,
                                                      xdirection = true)
     
     # Domain
@@ -163,7 +164,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
     Δt = 2.5minutes
 
     if xdirection 
-        grid = LatitudeLongitudeGrid(arch;
+        grid = LatitudeLongitudeGrid(arch, FT;
                                     topology = (Periodic, Bounded, Bounded),
                                     size = (Ny, Ny, Nz), 
                                     longitude = (-10, 10),
@@ -171,7 +172,7 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
                                     z = (-Lz, 0),
                                     halo = (6, 6, 6))
     else
-        grid = LatitudeLongitudeGrid(arch;
+        grid = LatitudeLongitudeGrid(arch, FT;
                                      topology = (Flat, Bounded, Bounded),
                                      size = (Ny, Nz), 
                                      latitude = (-60, -40),
@@ -179,29 +180,29 @@ function baroclinic_adjustment_latlong(resolution, filename; arch = GPU(),
                                      halo = (6, 6))
     end
 
-    vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = one(grid),
-                                                               convective_νz = zero(grid),
-                                                               background_κz = 1e-5,
-                                                               background_νz = 1e-4)
+    vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(FT; convective_κz = one(grid),
+                                                                   convective_νz = zero(grid),
+                                                                   background_κz = 1e-5,
+                                                                   background_νz)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
-    gravity = Oceananigans.BuoyancyModels.g_Earth
+    gravity = FT(Oceananigans.BuoyancyModels.g_Earth)
     max_Δt = 10minutes
 
     substeps = barotropic_substeps(max_Δt, grid, gravity)
 
-    free_surface = SplitExplicitFreeSurface(; substeps)
+    free_surface = SplitExplicitFreeSurface(FT; substeps)
     @info "running with substeps $substeps"
     @info "Building a model..."
 
     model = HydrostaticFreeSurfaceModel(; grid,
-                                        coriolis = HydrostaticSphericalCoriolis(),
+                                        coriolis = HydrostaticSphericalCoriolis(FT),
                                         buoyancy = BuoyancyTracer(),
                                         closure = closures,
                                         tracers = :b,
                                         momentum_advection,
-                                        tracer_advection = WENO(),
+                                        tracer_advection = WENO(FT),
                                         free_surface)
 
     @info "Built $model."
@@ -270,40 +271,46 @@ advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
 add_trailing_characters(name, trailing_character = "_weaker") = name * trailing_character
 
-using Oceananigans.Advection: HybridOrderWENO, FluxForm
+using Oceananigans.Advection: HybridOrderWENO, FluxForm, FunctionStencil, divergence_smoothness
+using Oceananigans.Advection: FullUpwinding, PartialUpwinding, SplitUpwinding
 
-function run_simulations(resolution; trailing_character = "_weaker")
+function run_simulations(resolution, FT::DataType = Float64; trailing_character = "_weaker")
+
+    Fs = DefaultStencil()
 
     vi1 = VectorInvariant()
-    vi2 = VectorInvariant(vorticity_scheme = WENO(), vertical_scheme = WENO())
-    vi3 = VectorInvariant(vorticity_scheme = WENO(), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
-    vi4 = VectorInvariant(vorticity_scheme = WENO(order = 7), vertical_scheme = WENO())
-    vi5 = VectorInvariant(vorticity_scheme = WENO(order = 7), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
-    vi6 = VectorInvariant(vorticity_scheme = WENO(order = 9), vertical_scheme = WENO())
-    vi7 = VectorInvariant(vorticity_scheme = WENO(order = 9), vertical_scheme = WENO(), vorticity_stencil  = DefaultStencil())
+    vi2 = VectorInvariant(vorticity_scheme = WENO(FT), vertical_scheme = WENO(FT))
+    vi3 = VectorInvariant(vorticity_scheme = WENO(FT), vertical_scheme = WENO(FT),            u_stencil = Fs, v_stencil = Fs)
+    vi4 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT))
+    vi5 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), u_stencil = Fs, v_stencil = Fs)
+    vi6 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT))
+    vi7 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), u_stencil = Fs, v_stencil = Fs)
 
-    vi8 = VectorInvariant(vorticity_scheme = HybridOrderWENO(high_order = 9, mid_order = 7, low_order = 5), vertical_scheme = WENO())
+    vi8 = VectorInvariant(vorticity_scheme = HybridOrderWENO(FT; high_order = 9, mid_order = 7, low_order = 5), 
+                           vertical_scheme = HybridOrderWENO(FT; high_order = 9, mid_order = 7, low_order = 5))
 
-    vi9  = FluxForm(; advection = WENO())
-    vi10 = FluxForm(; advection = WENO(order = 7))
-    vi11 = FluxForm(; advection = WENO(order = 9))
+    vi9  = FluxForm(; scheme = WENO())
+    vi10 = FluxForm(; scheme = WENO(order = 7))
+    vi11 = FluxForm(; scheme = WENO(order = 9))
+
+    vi12 = VectorInvariant(vorticity_scheme = WENO(order = 9), vertical_scheme = WENO(), multi_dimensional_stencil = true)
 
     hi1 = nothing
     hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
     hi3 = leith_viscosity(HorizontalFormulation())
     hi4 = leith_laplacian_viscosity(HorizontalFormulation())
     hi5 = smagorinski_viscosity(HorizontalFormulation())
-    hi6 = QGLeithViscosity()
+    hi6 = QGLeith()
 
-    advection_schemes   = [vi1, vi1, vi1, vi1, vi1, vi2, vi3, vi4, vi5, vi6, vi7, vi8, vi9, vi10, vi11]
-    horizontal_closures = [hi2, hi3, hi4, hi5, hi6, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1,  hi1]
+    advection_schemes   = [vi1, vi1, vi1, vi1, vi1, vi2, vi3, vi4, vi5, vi6, vi7, vi8, vi9, vi10, vi11, vi12]
+    horizontal_closures = [hi2, hi3, hi4, hi5, hi6, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1,  hi1,  hi1] 
 
     names = ["bilap", "leith", "lapleith", "smag", "qgleith", 
-             "weno5v", "weno5d", "weno7v", "weno7d", "weno9v", "weno9d", "wenoHv",
-             "weno5F", "weno7F", "weno9F"]
-             
+             "weno5d", "weno5v", "weno7d", "weno7v", "weno9d", "weno9v", "wenoHd",
+             "weno5F", "weno7F", "weno9F", "weno9MD"]
+
     names = add_trailing_characters.(names, Ref(trailing_character))
-    
+
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
         @show name, momentum_advection, horizontal_closure
         baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure, arch = GPU())
@@ -311,6 +318,33 @@ function run_simulations(resolution; trailing_character = "_weaker")
 
     return nothing
 end
+
+function run_weno_simulations(resolution, FT::DataType = Float64; trailing_character = "_weaker")
+    
+    vi2 = VectorInvariant(vorticity_scheme = WENO(FT),            vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
+    vi3 = VectorInvariant(vorticity_scheme = WENO(FT),            vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
+    vi4 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
+    vi5 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
+    vi6 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
+    vi7 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
+
+    hi1 = nothing
+
+    advection_schemes   = [vi2, vi3, vi4, vi5, vi6, vi7]
+    horizontal_closures = [hi1, hi1, hi1, hi1, hi1, hi1] 
+
+    names = ["weno5pV", "weno5pD", "weno7pV", "weno7pD", "weno9pV", "weno9pD",]
+
+    names = add_trailing_characters.(names, Ref(trailing_character))
+
+    for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
+        @show name, momentum_advection, horizontal_closure
+        baroclinic_adjustment_latlong(resolution, name, FT; momentum_advection, horizontal_closure, arch = GPU())
+    end
+
+    return nothing
+end
+
 
 function run_high_res_simulation(resolution; trailing_character = "_weaker")
 
