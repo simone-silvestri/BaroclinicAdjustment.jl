@@ -274,40 +274,78 @@ add_trailing_characters(name, trailing_character = "_weaker") = name * trailing_
 using Oceananigans.Advection: HybridOrderWENO, FluxForm, FunctionStencil, divergence_smoothness
 using Oceananigans.Advection: FullUpwinding, PartialUpwinding, SplitUpwinding
 
+
+using Oceananigans.Advection: VectorInvariantFullVerticalUpwinding, VectorInvariantPartialVerticalUpwinding, VectorInvariantSplitVerticalUpwinding
+
+getupwindingscheme(::VectorInvariantFullVerticalUpwinding)    = "f"
+getupwindingscheme(::VectorInvariantPartialVerticalUpwinding) = "p"
+getupwindingscheme(::VectorInvariantSplitVerticalUpwinding)   = "s"
+
+getname(s::VectorInvariant{N}) where N = "weno" * string(N * 2 - 1) * getupwindingscheme(s) * "$(s.vorticity_stencil isa VelocityStencil ? "V" : "D")"
+
 function run_simulations(resolution, FT::DataType = Float64; trailing_character = "_weaker")
 
     Fs = DefaultStencil()
 
-    vi1 = VectorInvariant()
-    vi2 = VectorInvariant(vorticity_scheme = WENO(FT), vertical_scheme = WENO(FT))
-    vi3 = VectorInvariant(vorticity_scheme = WENO(FT), vertical_scheme = WENO(FT),            u_stencil = Fs, v_stencil = Fs)
-    vi4 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT))
-    vi5 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), u_stencil = Fs, v_stencil = Fs)
-    vi6 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT))
-    vi7 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), u_stencil = Fs, v_stencil = Fs)
+    advection_schemes   = []
+    horizontal_closures = []
+    names               = []
 
-    vi8 = VectorInvariant(vorticity_scheme = HybridOrderWENO(FT; high_order = 9, mid_order = 7, low_order = 5), 
-                           vertical_scheme = HybridOrderWENO(FT; high_order = 9, mid_order = 7, low_order = 5))
+    # First five are the "Explicit" LES closures
+    for i in 1:5
+        push!(advection_schemes, VectorInvariant())
+    end
 
-    vi9  = FluxForm(; scheme = WENO())
-    vi10 = FluxForm(; scheme = WENO(order = 7))
-    vi11 = FluxForm(; scheme = WENO(order = 9))
+    hi2 = HorizontalScalarBiharmonicDiffusivity(FT; ν = geometric_νhb, discrete_form = true, parameters = 5days)
+    hi3 = leith_viscosity(HorizontalFormulation(), FT)
+    hi4 = leith_laplacian_viscosity(HorizontalFormulation(), FT)
+    hi5 = smagorinski_viscosity(HorizontalFormulation(), FT)
+    hi6 = QGLeith(FT)
 
-    vi12 = VectorInvariant(vorticity_scheme = WENO(order = 9), vertical_scheme = WENO(), multi_dimensional_stencil = true)
+    push!(horizontal_closures, hi2, hi3, hi4, hi5, hi6)
+    push!(names, "bilap", "leith", "lapleith", "smag", "qgleith")
 
-    hi1 = nothing
-    hi2 = HorizontalScalarBiharmonicDiffusivity(ν = geometric_νhb, discrete_form = true, parameters = 5days)
-    hi3 = leith_viscosity(HorizontalFormulation())
-    hi4 = leith_laplacian_viscosity(HorizontalFormulation())
-    hi5 = smagorinski_viscosity(HorizontalFormulation())
-    hi6 = QGLeith()
+    # Next twelve are the "Implicit" LES closures
+    for order in [5, 9]
+        for upwinding_treatment in [FullUpwinding(), PartialUpwinding(), SplitUpwinding()]
+            for vorticity_stencil in [VelocityStencil(), DefaultStencil()]
+                push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order), 
+                                                           vorticity_stencil,
+                                                           vertical_scheme = WENO(FT), 
+                                                           upwinding_treatment))
+                push!(horizontal_closures, nothing)
+                push!(names, getname(advection_schemes[end]))
+            end
+        end
+    end
 
-    advection_schemes   = [vi1, vi1, vi1, vi1, vi1, vi2, vi3, vi4, vi5, vi6, vi7, vi8, vi9, vi10, vi11, vi12]
-    horizontal_closures = [hi2, hi3, hi4, hi5, hi6, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1, hi1,  hi1,  hi1] 
+    # Incorrect stencil usage
+    for order in [5, 9]
+        push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order),  
+                                                   vorticity_stencil = DefaultStencil(),
+                                                   u_stencil  = DefaultStencil(),
+                                                   v_stencil  = DefaultStencil(),
+                                                   u2_stencil = DefaultStencil(),
+                                                   v2_stencil = DefaultStencil(),
+                                                   vertical_scheme = WENO(FT), 
+                                                   upwinding_treatment = PartialUpwinding()))
+                
+        push!(horizontal_closures, nothing)
+    end
 
-    names = ["bilap", "leith", "lapleith", "smag", "qgleith", 
-             "weno5d", "weno5v", "weno7d", "weno7v", "weno9d", "weno9v", "wenoHd",
-             "weno5F", "weno7F", "weno9F", "weno9MD"]
+    push!(names, "weno5pAllD", "weno9pAllD")
+    
+    # Flux form WENO schemes
+    push!(advection_schemes, FluxForm(; scheme = WENO(FT)))
+    push!(advection_schemes, FluxForm(; scheme = WENO(FT; order = 9)))
+    push!(horizontal_closures, nothing, nothing)
+
+    push!(names, "weno5Fl", "weno9Fl")
+
+    push!(advection_schemes, VectorInvariant(vorticity_scheme = WENO(FT),            vertical_scheme = WENO(FT), multi_dimensional_stencil = true))
+    push!(advection_schemes, VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), multi_dimensional_stencil = true))
+    push!(horizontal_closures, nothing, nothing)
+    push!(names, "weno5MD", "weno9MD")
 
     names = add_trailing_characters.(names, Ref(trailing_character))
 
@@ -321,8 +359,8 @@ end
 
 function run_weno_simulations(resolution, FT::DataType = Float64; trailing_character = "_weaker")
     
-    vi2 = VectorInvariant(vorticity_scheme = WENO(FT),            vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
-    vi3 = VectorInvariant(vorticity_scheme = WENO(FT),            vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
+    vi2 = VectorInvariant(vorticity_scheme = WENO(FT; order = 5), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
+    vi3 = VectorInvariant(vorticity_scheme = WENO(FT; order = 5), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
     vi4 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
     vi5 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
     vi6 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
@@ -333,7 +371,7 @@ function run_weno_simulations(resolution, FT::DataType = Float64; trailing_chara
     advection_schemes   = [vi2, vi3, vi4, vi5, vi6, vi7]
     horizontal_closures = [hi1, hi1, hi1, hi1, hi1, hi1] 
 
-    names = ["weno5pV", "weno5pD", "weno7pV", "weno7pD", "weno9pV", "weno9pD",]
+    names = ["weno5pV2", "weno5pD2", "weno7pV2", "weno7pD2", "weno9pV2", "weno9pD2"]
 
     names = add_trailing_characters.(names, Ref(trailing_character))
 
@@ -344,7 +382,6 @@ function run_weno_simulations(resolution, FT::DataType = Float64; trailing_chara
 
     return nothing
 end
-
 
 function run_high_res_simulation(resolution; trailing_character = "_weaker")
 
@@ -375,7 +412,7 @@ run_2d_flat_simulation(resolution; trailing_character = "_weaker") =
 
 function run_all(resolutions; trailing_character = ["_weaker"])
     for (res, char) in zip(resolutions, trailing_character)
-        run_simulations(res; trailing_character = char)
+        run_all_simulations(res; trailing_character = char)
     end
     run_high_res_simulation(1/50; trailing_character = "_fifty")
 end

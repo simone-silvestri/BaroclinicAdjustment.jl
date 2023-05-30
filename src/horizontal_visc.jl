@@ -25,11 +25,11 @@ using Oceananigans.Operators: ℑxyz
    return A^2 * dynamic_visc
 end
 
-function smagorinski_viscosity(formulation; Cₛₘ = 0.45, Area = Δ²ᵃᵃᵃ)
+function smagorinski_viscosity(formulation, FT::DataType = Float64; Cₛₘ = 0.45, Area = Δ²ᵃᵃᵃ)
 
     @show C = (Cₛₘ / π)^2 / 8
 
-    return ScalarBiharmonicDiffusivity(formulation; 
+    return ScalarBiharmonicDiffusivity(formulation, FT; 
                                        ν=νhb_smagorinski_final, discrete_form=true,  
 				                       parameters = (; C, Area))
 end
@@ -54,11 +54,11 @@ end
     return dynamic_visc * A^(5/2)
 end
 
-function leith_viscosity(formulation; Cₗ = 1.0, Area = Δ²ᵃᵃᵃ)
+function leith_viscosity(formulation, FT::DataType = Float64; Cₗ = 1.0, Area = Δ²ᵃᵃᵃ)
 
     @show C = (Cₗ / π)^3 / 8
 
-    visc = ScalarBiharmonicDiffusivity(formulation; 
+    visc = ScalarBiharmonicDiffusivity(formulation, FT; 
                                        ν=νhb_leith_final, discrete_form=true,  
                                        parameters = (; C, Area))
 
@@ -87,11 +87,11 @@ end
     return dynamic_visc * A^(3/2)
 end
 
-function leith_laplacian_viscosity(formulation = HorizontalFormulation(); Cₗ = 1.0, Area = Δ²ᵃᵃᵃ)
+function leith_laplacian_viscosity(formulation = HorizontalFormulation(), FT::DataType = Float64; Cₗ = 1.0, Area = Δ²ᵃᵃᵃ)
 
     @show C = (Cₗ / π)^3 
 
-    visc = ScalarDiffusivity(formulation; 
+    visc = ScalarDiffusivity(formulation, FT; 
                              ν=νhb_leith_laplacian_final, discrete_form=true,  
                              parameters = (; C, Area))
 

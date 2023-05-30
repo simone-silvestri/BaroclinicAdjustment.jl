@@ -1,6 +1,8 @@
 using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Utils: ConsecutiveIterations
 
+using Oceananigans
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Distributed
 
@@ -76,27 +78,9 @@ function reduced_outputs!(simulation, output_prefix; overwrite_existing = true,
     output_fields = (; u, v, w, b)
 
     simulation.output_writers[:snapshots] = JLD2OutputWriter(model, output_fields;
-                                                                schedule = TimeInterval(snapshot_time),
+                                                                schedule = ConsecutiveIterations(TimeInterval(snapshot_time)),
                                                                 filename = output_prefix * "_snapshots",
                                                                 overwrite_existing)
-   
-
-    simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, output_fields;
-                                                                    schedule = TimeInterval(surface_time),
-                                                                    filename = output_prefix * "_surface",
-                                                                    indices = (:, :, grid.Nz),
-                                                                    overwrite_existing)
-                                                                                                                                
-    simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, output_fields;
-                                                                    schedule = TimeInterval(bottom_time),
-                                                                    filename = output_prefix * "_bottom",
-                                                                    indices = (:, :, 2),
-                                                                    overwrite_existing)
-    
-    simulation.output_writers[:checkpointer] = Checkpointer(model;
-                                                            schedule = TimeInterval(checkpoint_time),
-                                                            prefix = output_prefix * "_checkpoint",
-                                                            overwrite_existing)
 
 end                                                 
 
