@@ -1,7 +1,7 @@
 using Statistics: mean
 using Oceananigans
 using BaroclinicAdjustment
-using BaroclinicAdjustment: add_trailing_characters
+using BaroclinicAdjustment: add_trailing_characters, getname
 using BaroclinicAdjustment.Diagnostics
 using BaroclinicAdjustment.Diagnostics: compute_rpe_density, 
                                         calculate_KE,
@@ -15,17 +15,20 @@ using BaroclinicAdjustment.Diagnostics: compute_rpe_density,
 
 using JLD2
 
+using Oceananigans.Advection: CrossUpwinding, SelfUpwinding, VelocityUpwinding
+using Oceananigans.Advection: VelocityStencil, DefaultStencil
+
 add_trailing_name(name) = name * "_snapshots.jld2"
 
-function compute_spurious_mixing(f::Dict)
+function compute_energy_diagnostics(f::Dict)
 
-    KE  = calculate_KE(f)
+    KE, BTKE, BCKE  = calculate_KE(f)
     aux = compute_rpe_density(f)
 
     APE = calculate_APE(aux)
     RPE = calculate_RPE(aux)
 
-    return (; KE, APE, RPE)
+    return (; KE, BTKE, BCKE, APE, RPE)
 end
 
 function compute_zonal_mean(f::Dict)
@@ -45,12 +48,36 @@ function compute_zonal_mean(f::Dict)
     return (; ū, v̄, w̄, b̄)
 end
 
-function calculate_diagnostics(trailing_character = "_weaker")
-    file_prefix = ["bilap", "leith", "lapleith", "smag", "qgleith",
-                   "weno5v", "weno5d", "weno7v", "weno7d", "weno9v", "weno9d", "wenoHv", "weno9MD",
-                   "weno5F", "weno7F", "weno9F"]
+function generate_names()
 
-    file_prefix = ["weno5pD", "weno5pV"]
+    names = []
+
+    # First five are the "Explicit" LES closures
+    push!(names, "bilap", "leith", "lapleith", "smag", "qgleith")
+
+    # Next twelve are the "Implicit" LES closures
+    for order in [5, 9]
+        for upwinding_treatment in (CrossUpwinding(), SelfUpwinding(), VelocityUpwinding())
+            for vorticity_stencil in (VelocityStencil(), DefaultStencil())
+                adv = VectorInvariant(; vorticity_scheme = WENO(; order), 
+                                        vorticity_stencil,
+                                        vertical_scheme = WENO(), 
+                                        upwinding_treatment)
+                push!(names, getname(adv))
+            end
+        end
+    end
+
+    push!(names, "weno5pAllD", "weno9pAllD")
+    push!(names, "weno5Fl", "weno9Fl")
+    push!(names, "weno5MD", "weno9MD")
+
+    return names
+end
+
+function calculate_diagnostics(trailing_character = "_weaker")
+    file_prefix = generate_names()
+
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
@@ -69,12 +96,12 @@ function calculate_diagnostics(trailing_character = "_weaker")
             fields = all_fieldtimeseries(filename; arch = CPU())
 
             GC.gc()
-            energy    = compute_spurious_mixing(fields)
+            energy    = compute_energy_diagnostics(fields)
             variance  = calculate_b_dissipation(fields)
             enstrophy = calculate_Ω(fields)
             N²        = calculate_N²(fields)
-            if length(fields[:u].times) > 200
-                spectra = compute_spectra(fields, 177:179)
+            if length(fields[:u].times) > 390
+                spectra = compute_spectra(fields, 380:400)
                 spectras[Symbol(prefix)] = spectra
             end
 

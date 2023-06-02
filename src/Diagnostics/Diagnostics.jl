@@ -31,6 +31,6 @@ include("spurious_mixing.jl")
 include("diagnostic_fields.jl")
 include("integrated_diagnostics.jl")
 include("spectra.jl")
-include("compute_spurious_mixing.jl")
+include("compute_integrated_diagnostics.jl")
 
 end

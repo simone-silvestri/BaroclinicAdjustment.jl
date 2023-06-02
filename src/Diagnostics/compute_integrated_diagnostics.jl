@@ -46,10 +46,14 @@ function calculate_APE(st)
     return APE
 end
 
-function calculate_KE(var)
+function calculate_KE(var; compute_projection = true)
     KE  = Float64[]
+    
+    BTKE = []
+    BCKE = []
 
     vol = VolumeField(var[:u].grid)
+    mean_vol = mean(vol, dims = 3)
 
     @info "computing resting and available potential energy density..."
     for t in 1:length(var[:u].times)
@@ -59,9 +63,22 @@ function calculate_KE(var)
         ke = compute!(Field(@at (Center, Center, Center) (u^2 + v^2) * vol))
 
         push!(KE, 0.5 * sum(interior(ke)))
+
+        if compute_projection
+            btke = 0.5 * sum(interior(ke),         dims = 3) 
+            bcke = 0.5 * sum(interior(ke) .- btke, dims = 3)
+
+    
+            push!(BTKE, btke)
+            push!(BCKE, bcke)
+        end
     end
 
-    return KE
+    if compute_projection
+        return KE, BTKE, BCKE
+    else
+        return KE
+    end
 end
 
 function calculate_Ω(var)

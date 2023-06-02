@@ -79,7 +79,7 @@ end
 
     Uspec[time, j, k] = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx])
     Vspec[time, j, k] = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx])
-    Ωspec[time, j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx])
+    # Ωspec[time, j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx-1])
 end
 
 @kernel function _compute_zonal_spectra!(Uspec, Vspec, Ωspec, grid, u, v, ζ)
@@ -89,7 +89,7 @@ end
 
     Uspec[j, k] = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx])
     Vspec[j, k] = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx])
-    Ωspec[j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx])
+    # Ωspec[j, k] = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx-1])
 end
 
 @kernel function _update_spectra!(Ufinal, Vfinal, Ωfinal, Uspec, Vspec, Ωspec)
@@ -97,7 +97,7 @@ end
 
     Ufinal[j, k].spec .+= Uspec[j, k].spec
     Vfinal[j, k].spec .+= Vspec[j, k].spec
-    Ωfinal[j, k].spec .+= Ωspec[j, k].spec
+    # Ωfinal[j, k].spec .+= Ωspec[j, k].spec
 end
 
 function compute_spectra(f::Dict)

@@ -7,7 +7,13 @@ using Oceananigans.Grids: minimum_xspacing, minimum_yspacing, architecture
 using Oceananigans.Operators
 using Oceananigans.Utils: getnamewrapper, launch!
 using Oceananigans.Coriolis: fᶠᶠᵃ
-using Oceananigans.Advection: VelocityStencil, DefaultStencil
+using Oceananigans.Advection: VelocityStencil, DefaultStencil, EnergyConservingScheme
+
+using Oceananigans.Advection: FunctionStencil, divergence_smoothness
+using Oceananigans.Advection: CrossUpwinding, SelfUpwinding, VelocityUpwinding
+
+using Oceananigans.Advection: VectorInvariantCrossVerticalUpwinding, VectorInvariantSelfVerticalUpwinding, VectorInvariantVelocityVerticalUpwinding
+
 using KernelAbstractions: @kernel, @index
 using JLD2
 using Random
@@ -150,7 +156,7 @@ function baroclinic_adjustment_rectilinear(resolution, filename; arch = GPU(),
     return nothing
 end
     
-function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = FLoat64; arch = GPU(), 
+function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; arch = GPU(), 
                                                      horizontal_closure = nothing,
                                                      momentum_advection = VectorInvariant(), 
                                                      background_νz = 1e-4,
@@ -271,21 +277,13 @@ advection_name(adv) = getnamewrapper(adv.vorticity_scheme)
 
 add_trailing_characters(name, trailing_character = "_weaker") = name * trailing_character
 
-using Oceananigans.Advection: HybridOrderWENO, FluxForm, FunctionStencil, divergence_smoothness
-using Oceananigans.Advection: FullUpwinding, PartialUpwinding, SplitUpwinding
-
-
-using Oceananigans.Advection: VectorInvariantFullVerticalUpwinding, VectorInvariantPartialVerticalUpwinding, VectorInvariantSplitVerticalUpwinding
-
-getupwindingscheme(::VectorInvariantFullVerticalUpwinding)    = "f"
-getupwindingscheme(::VectorInvariantPartialVerticalUpwinding) = "p"
-getupwindingscheme(::VectorInvariantSplitVerticalUpwinding)   = "s"
+getupwindingscheme(::VectorInvariantCrossVerticalUpwinding)    = "f"
+getupwindingscheme(::VectorInvariantSelfVerticalUpwinding)     = "p"
+getupwindingscheme(::VectorInvariantVelocityVerticalUpwinding) = "s"
 
 getname(s::VectorInvariant{N}) where N = "weno" * string(N * 2 - 1) * getupwindingscheme(s) * "$(s.vorticity_stencil isa VelocityStencil ? "V" : "D")"
 
 function run_simulations(resolution, FT::DataType = Float64; trailing_character = "_weaker")
-
-    Fs = DefaultStencil()
 
     advection_schemes   = []
     horizontal_closures = []
@@ -293,7 +291,7 @@ function run_simulations(resolution, FT::DataType = Float64; trailing_character 
 
     # First five are the "Explicit" LES closures
     for i in 1:5
-        push!(advection_schemes, VectorInvariant())
+        push!(advection_schemes, VectorInvariant(vorticity_scheme = EnergyConservingScheme(), vertical_scheme = EnergyConservingScheme()))
     end
 
     hi2 = HorizontalScalarBiharmonicDiffusivity(FT; ν = geometric_νhb, discrete_form = true, parameters = 5days)
@@ -307,8 +305,8 @@ function run_simulations(resolution, FT::DataType = Float64; trailing_character 
 
     # Next twelve are the "Implicit" LES closures
     for order in [5, 9]
-        for upwinding_treatment in [FullUpwinding(), PartialUpwinding(), SplitUpwinding()]
-            for vorticity_stencil in [VelocityStencil(), DefaultStencil()]
+        for upwinding_treatment in (CrossUpwinding(), SelfUpwinding(), VelocityUpwinding())
+            for vorticity_stencil in (VelocityStencil(), DefaultStencil())
                 push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order), 
                                                            vorticity_stencil,
                                                            vertical_scheme = WENO(FT), 
@@ -323,12 +321,11 @@ function run_simulations(resolution, FT::DataType = Float64; trailing_character 
     for order in [5, 9]
         push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order),  
                                                    vorticity_stencil = DefaultStencil(),
-                                                   u_stencil  = DefaultStencil(),
-                                                   v_stencil  = DefaultStencil(),
-                                                   u2_stencil = DefaultStencil(),
-                                                   v2_stencil = DefaultStencil(),
-                                                   vertical_scheme = WENO(FT), 
-                                                   upwinding_treatment = PartialUpwinding()))
+                                                   δU_stencil  = DefaultStencil(),
+                                                   δV_stencil  = DefaultStencil(),
+                                                   δu²_stencil = DefaultStencil(),
+                                                   δv²_stencil = DefaultStencil(),
+                                                   vertical_scheme = WENO(FT)))
                 
         push!(horizontal_closures, nothing)
     end
@@ -336,8 +333,8 @@ function run_simulations(resolution, FT::DataType = Float64; trailing_character 
     push!(names, "weno5pAllD", "weno9pAllD")
     
     # Flux form WENO schemes
-    push!(advection_schemes, FluxForm(; scheme = WENO(FT)))
-    push!(advection_schemes, FluxForm(; scheme = WENO(FT; order = 9)))
+    push!(advection_schemes, WENO(FT))
+    push!(advection_schemes, WENO(FT; order = 9))
     push!(horizontal_closures, nothing, nothing)
 
     push!(names, "weno5Fl", "weno9Fl")
@@ -347,36 +344,12 @@ function run_simulations(resolution, FT::DataType = Float64; trailing_character 
     push!(horizontal_closures, nothing, nothing)
     push!(names, "weno5MD", "weno9MD")
 
-    names = add_trailing_characters.(names, Ref(trailing_character))
-
-    for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-        @show name, momentum_advection, horizontal_closure
-        baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure, arch = GPU())
-    end
-
-    return nothing
-end
-
-function run_weno_simulations(resolution, FT::DataType = Float64; trailing_character = "_weaker")
-    
-    vi2 = VectorInvariant(vorticity_scheme = WENO(FT; order = 5), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
-    vi3 = VectorInvariant(vorticity_scheme = WENO(FT; order = 5), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
-    vi4 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
-    vi5 = VectorInvariant(vorticity_scheme = WENO(FT; order = 7), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
-    vi6 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding())
-    vi7 = VectorInvariant(vorticity_scheme = WENO(FT; order = 9), vertical_scheme = WENO(FT), upwinding_treatment = PartialUpwinding(), vorticity_stencil = DefaultStencil())
-
-    hi1 = nothing
-
-    advection_schemes   = [vi2, vi3, vi4, vi5, vi6, vi7]
-    horizontal_closures = [hi1, hi1, hi1, hi1, hi1, hi1] 
-
-    names = ["weno5pV2", "weno5pD2", "weno7pV2", "weno7pD2", "weno9pV2", "weno9pD2"]
+    @info "Running simulations with resolution $resolution" names
 
     names = add_trailing_characters.(names, Ref(trailing_character))
 
     for (momentum_advection, horizontal_closure, name) in zip(advection_schemes, horizontal_closures, names)
-        @show name, momentum_advection, horizontal_closure
+        @info "running simulation" name momentum_advection horizontal_closure
         baroclinic_adjustment_latlong(resolution, name, FT; momentum_advection, horizontal_closure, arch = GPU())
     end
 
@@ -410,9 +383,9 @@ run_2d_flat_simulation(resolution; trailing_character = "_weaker") =
                           horizontal_closure = leith_viscosity(HorizontalFormulation()),
                           xdirection = false)
 
-function run_all(resolutions; trailing_character = ["_weaker"])
+function run_all(resolutions, FT::DataType = Float64; trailing_character = ["_weaker"])
     for (res, char) in zip(resolutions, trailing_character)
-        run_all_simulations(res; trailing_character = char)
+        run_simulations(res, FT; trailing_character = char)
     end
     run_high_res_simulation(1/50; trailing_character = "_fifty")
 end
