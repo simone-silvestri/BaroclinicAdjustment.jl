@@ -9,14 +9,17 @@ using BaroclinicAdjustment.Diagnostics: compute_rpe_density,
                                         calculate_RPE,
                                         calculate_Ω,
                                         calculate_N²,
+                                        calculate_z★_diagnostics,
                                         calculate_deformation_radius,
                                         calculate_b_dissipation,
                                         compute_spectra
 
 using JLD2
 
-using Oceananigans.Advection: CrossUpwinding, SelfUpwinding, VelocityUpwinding
+using Oceananigans.Advection: CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding
 using Oceananigans.Advection: VelocityStencil, DefaultStencil
+
+using BaroclinicAdjustment.Diagnostics: VerticalVorticityOperation, KineticEnergyOperation, DensityOperation
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
@@ -57,7 +60,7 @@ function generate_names()
 
     # Next twelve are the "Implicit" LES closures
     for order in [5, 9]
-        for upwinding_treatment in (CrossUpwinding(), SelfUpwinding(), VelocityUpwinding())
+        for upwinding_treatment in (CrossAndSelfUpwinding(), OnlySelfUpwinding(), VelocityUpwinding())
             for vorticity_stencil in (VelocityStencil(), DefaultStencil())
                 adv = VectorInvariant(; vorticity_scheme = WENO(; order), 
                                         vorticity_stencil,
@@ -73,6 +76,50 @@ function generate_names()
     push!(names, "weno5MD", "weno9MD")
 
     return names
+end
+
+function save_contours(trailing_character = "_weaker")
+    file_prefix = generate_names()
+
+    @show file_prefix
+    filenames = add_trailing_characters.(file_prefix, trailing_character)
+    filenames = add_trailing_name.(filenames)
+
+    enstrophy = Dict()
+    buoyancy  = Dict()
+    vorticity = Dict()
+    energy    = Dict()
+    referenpe = Dict()
+
+    for (prefix, filename) in zip(file_prefix, filenames)
+        if isfile(filename)
+
+            @info "doing file " filename
+            fields = all_fieldtimeseries(filename; arch = CPU())
+
+            ze = calculate_z★_diagnostics(fields[:b], 400)
+            ρ  = DensityOperation(fields[:b][400])
+            εe = compute!(Field(ze * ρ))
+    
+            GC.gc()
+            ζ  = compute!(Field(VerticalVorticityOperation(fields, 400)))
+            ζ² = compute!(Field(ζ^2))
+
+            KE = compute!(Field(KineticEnergyOperation(fields, 400)))
+
+            enstrophy[Symbol(prefix)] = (interior(ζ², :, :, 25), interior(ζ², :, :, 50))
+            vorticity[Symbol(prefix)] = (interior(ζ, :, :, 25), interior(ζ, :, :, 50))
+            buoyancy[Symbol(prefix)]  = (interior(fields[:b][400], :, :, 25), interior(fields[:b][400], :, :, 50))
+            energy[Symbol(prefix)]    = (interior(KE, :, :, 25), interior(KE, :, :, 50))
+            referenpe[Symbol(prefix)] = (interior(εe, :, :, 25), interior(εe, :, :, 50))
+        end
+    end
+
+    write_file!("contours" * trailing_character * ".jld2", "enstrophy",   enstrophy)
+    write_file!("contours" * trailing_character * ".jld2", "vorticity",   vorticity)
+    write_file!("contours" * trailing_character * ".jld2", "buoyancy",    buoyancy )
+    write_file!("contours" * trailing_character * ".jld2", "energy",      energy   )
+    write_file!("contours" * trailing_character * ".jld2", "referencepe", referenpe)
 end
 
 function calculate_diagnostics(trailing_character = "_weaker")
@@ -118,6 +165,23 @@ function calculate_diagnostics(trailing_character = "_weaker")
     write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
     write_file!("spectra" *     trailing_character * ".jld2", spectras)
     
+    return nothing
+end
+
+function write_file!(name, prefix, var) 
+    if isfile(name)
+        jldopen(name,"r+") do f
+            for (key, value) in var
+                f[prefix * "/" * string(key)] = value
+            end
+        end
+    else
+        jldopen(name,"w") do f
+            for (key, value) in var
+                f[prefix * "/" * string(key)] = value
+            end
+        end
+    end
     return nothing
 end
 

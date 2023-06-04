@@ -33,12 +33,13 @@ using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, �
 
 struct QGLeith{FT, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation}
     C :: FT
+    min_N² :: FT
     isopycnal_tensor :: M
     slope_limiter :: S
 end
 
-QGLeith(FT::DataType = Float64; C=FT(1.0), isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
-    QGLeith(C, isopycnal_model, slope_limiter) 
+QGLeith(FT::DataType = Float64; C=FT(1.0), min_N² = FT(1e-20), isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
+    QGLeith(C, min_N², isopycnal_model, slope_limiter) 
 
 DiffusivityFields(grid, tracer_names, bcs, ::QGLeith) = 
                 (; νₑ = CenterField(grid),
@@ -63,18 +64,18 @@ end
     return (∂xδ^2 + ∂yδ^2)
 end
 
-@inline ∂yb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
-                                                                          max(1e-20, ∂z_b(i, j, k, grid, buoyancy, tracers)) *
-                                                                          ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+@inline ∂yb_times_f2_div_N2(i, j, k, grid, clo, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
+                                                                               max(clo.min_N², ∂z_b(i, j, k, grid, buoyancy, tracers)) *
+                                                                               ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
 
-@inline ∂xb_times_f2_div_N2(i, j, k, grid, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
-                                                                          max(1e-20, ∂z_b(i, j, k, grid, buoyancy, tracers))  *
-                                                                          ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+@inline ∂xb_times_f2_div_N2(i, j, k, grid, clo, coriolis, buoyancy, tracers) = ℑxyzᶜᶜᶠ(i, j, k, grid, fᶠᶠᵃ, coriolis) / 
+                                                                               max(clo.min_N², ∂z_b(i, j, k, grid, buoyancy, tracers))  *
+                                                                               ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
 
-@inline function abs²_∇h_q(i, j, k, grid, coriolis, buoyancy, tracers)
+@inline function abs²_∇h_q(i, j, k, grid, closure, coriolis, buoyancy, tracers)
 
-    ∂zqx = ∂zᶜᶜᶜ(i, j, k, grid, ∂xb_times_f2_div_N2, coriolis, buoyancy, tracers)
-    ∂zqy = ∂zᶜᶜᶜ(i, j, k, grid, ∂yb_times_f2_div_N2, coriolis, buoyancy, tracers)
+    ∂zqx = ∂zᶜᶜᶜ(i, j, k, grid, ∂xb_times_f2_div_N2, closure, coriolis, buoyancy, tracers)
+    ∂zqy = ∂zᶜᶜᶜ(i, j, k, grid, ∂yb_times_f2_div_N2, closure, coriolis, buoyancy, tracers)
 
     return (∂zqx^2 + ∂zqy^2)
 end
@@ -87,7 +88,7 @@ end
 
     ∂ζ² =  abs²_∇h_ζ(i, j, k, grid, coriolis, velocities)
     ∂δ² =  abs²_∇h_δ(i, j, k, grid, velocities)
-    ∂q² =  abs²_∇h_q(i, j, k, grid, coriolis, buoyancy, tracers)
+    ∂q² =  abs²_∇h_q(i, j, k, grid, closure, coriolis, buoyancy, tracers)
 
     A  = Δ²ᶜᶜᶜ(i, j, k, grid)
 
@@ -107,7 +108,6 @@ end
 
     @inbounds begin
         Ld[i, j, 1] = 0
-
         @unroll for k in 1:grid.Nz
             Ld[i, j, 1] += Δzᶜᶜᶠ(i, j, k, grid) * _deformation_radius(i, j, k, grid, tracers, buoyancy, coriolis)
         end

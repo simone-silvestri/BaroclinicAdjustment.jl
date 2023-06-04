@@ -1,4 +1,4 @@
-using GLMakie
+using CairoMakie
 using BaroclinicAdjustment
 using BaroclinicAdjustment: add_trailing_characters
 using BaroclinicAdjustment.Diagnostics
@@ -13,7 +13,7 @@ using JLD2
 add_trailing_name(name) = name * "_snapshots.jld2"
 
 function record_video!(name, fig, iter, Nt) 
-    GLMakie.record(fig, name * ".mp4", 1:Nt, framerate = 11) do i
+    CairoMakie.record(fig, name * ".mp4", 1:Nt, framerate = 11) do i
         @info "step $i"; 
         iter[] = i; 
     end
@@ -41,6 +41,8 @@ function surface_videos(trailing_character = "_weaker")
     file_prefix = ["bilap", "leith", "lapleith", "smag", "qgleith",
                    "weno5v", "weno5d", "weno7v", "weno7d", "weno9v", "weno9d", "wenoHv", "weno9MD",
                    "weno5F", "weno7F", "weno9F"]
+
+    file_prefix = ["weno9pV2", "weno9pV"]
 
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
