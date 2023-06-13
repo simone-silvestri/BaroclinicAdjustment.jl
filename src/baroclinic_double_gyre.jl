@@ -1,3 +1,5 @@
+using Oceananigans.Grids: φnode
+
 function baroclinic_double_gyre(resolution, filename, FT::DataType = Float64; arch = GPU(), 
                                 horizontal_closure = nothing,
                                 momentum_advection = VectorInvariant())
@@ -11,7 +13,7 @@ function baroclinic_double_gyre(resolution, filename, FT::DataType = Float64; ar
     φ_south = 15 # [°] latitude of south boundary
     φ_north = 75 # [°] latitude of north boundary
 
-    φ₀ = 0.5(φ_south + φ_north) # [°] latitude of the center of the domain
+    φ₀ = 0.5(φ_north + φ_south) # [°] latitude of the center of the domain
 
     Lλ = λ_east - λ_west   # [°] longitude extent of the domain
     Lφ = φ_north - φ_south # [°] latitude extent of the domain
@@ -58,27 +60,34 @@ function baroclinic_double_gyre(resolution, filename, FT::DataType = Float64; ar
     parameters = (Lφ = Lφ,
                   Lz = Lz,
                   φ₀ = φ₀,                # latitude of the center of the domain [°]
+                  φₛ = φ_south,           # latitude of the southern edge of the domain [°]
                   τ = 0.1 / ρ₀,           # surface kinematic wind stress [m² s⁻²]
-                  μ = 0.001,              # bottom drag damping parameter [ms⁻¹]
+                  μ = 0.001,              # bottom drag damping parameter [s⁻¹]
                   Δb = 30 * α * g,        # surface vertical buoyancy gradient [s⁻²]
                   timescale = 30days,     # relaxation time scale [s]  
                   vˢ = Δzₛ/30days)        # buoyancy pumping velocity [ms⁻¹]
 
-    @inline u_stress(λ, φ, t, p)               = p.τ * sin(2π * (φ - p.φ₀) / p.Lφ)
-    @inline surface_buoyancy(φ, p)             = p.Δb * (φ - p.φ₀) / p.Lφ
-    @inline buoyancy_relaxation(λ, φ, t, b, p) = p.vˢ * (b - surface_buoyancy(φ, p))
+    @inline u_stress(λ, φ, t, p) = p.τ * sin(2π * (φ - p.φ₀) / p.Lφ)
+
+    # ### Surface buoyancy relaxation
+    @inline function b_relax(i, j, grid, clock, fields, p) 
+        bˢ = fields.b[i, j, grid.Nz]
+        φ  = φnode(j, grid, Center())
+        bᴿ = p.Δb * (φ - p.φₛ) / p.Lφ
+        return p.vˢ * (bˢ - bᴿ)
+    end
 
     # ### Bottom drag
-    @inline u_drag(λ, φ, t, u, p) = - p.μ * u
-    @inline v_drag(λ, φ, t, v, p) = - p.μ * v
+    @inline u_drag(i, j, grid, clock, fields, p) = - p.μ * Δzᶠᶜᶜ(i, j, 1, grid) * fields.u[i, j, 1]
+    @inline v_drag(i, j, grid, clock, fields, p) = - p.μ * Δzᶜᶠᶜ(i, j, 1, grid) * fields.v[i, j, 1]
 
     u_stress_bc = FluxBoundaryCondition(u_stress; parameters)
-    b_relax_bc  = FluxBoundaryCondition(buoyancy_relaxation; field_dependencies = :b, parameters)
-    u_drag_bc   = FluxBoundaryCondition(u_drag; field_dependencies = :u, parameters)
-    v_drag_bc   = FluxBoundaryCondition(v_drag; field_dependencies = :v, parameters)
+    b_relax_bc  = FluxBoundaryCondition(nothing) #b_relax;  parameters, discrete_form = true)
+    u_drag_bc   = FluxBoundaryCondition(u_drag;   parameters, discrete_form = true)
+    v_drag_bc   = FluxBoundaryCondition(v_drag;   parameters, discrete_form = true)
 
-    u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
-    v_bcs = FieldBoundaryConditions(                   bottom = v_drag_bc)
+    u_bcs = FieldBoundaryConditions(bottom = u_drag_bc, top = u_stress_bc)
+    v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
     b_bcs = FieldBoundaryConditions(top = b_relax_bc)
 
     model = HydrostaticFreeSurfaceModel(; grid,
@@ -105,7 +114,7 @@ function baroclinic_double_gyre(resolution, filename, FT::DataType = Float64; ar
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.3; max_change=1.1, max_Δt, min_Δt = 15)
+    wizard = TimeStepWizard(cfl=0.2; max_change=1.1, max_Δt, min_Δt = 15)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     # add progress callback

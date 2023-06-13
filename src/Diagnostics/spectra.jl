@@ -92,28 +92,6 @@ end
     WBfinal[j, k].spec .+= WBspec[j, k].spec
 end
 
-function compute_spectra(f::Dict)
-    grid = f[:u].grid
-
-    Nx, Ny, Nz = size(grid)
-    Nt = length(f[:u].times)
-
-    Uspec = Array{Spectrum}(undef, Nt, Ny, Nz)
-    Vspec = Array{Spectrum}(undef, Nt, Ny, Nz)
-    Ωspec = Array{Spectrum}(undef, Nt, Ny, Nz)
-
-    for time in 1:length(f[:u].times)
-        @info "doing time $time"
-        u = f[:u][time]
-        v = f[:v][time]
-        ζ = compute!(Field(VerticalVorticityOperation(f, time)))
-
-        launch!(CPU(), grid, :yz, _compute_zonal_spectra!, Uspec, Vspec, Ωspec, grid, time, u, v, ζ)
-    end
-
-    return (; Uspec, Vspec, Ωspec)
-end
-
 function compute_spectra(f::Dict, time)
     grid = f[:u].grid
 
