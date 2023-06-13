@@ -53,21 +53,20 @@ function calculate_KE(var; compute_projection = true)
     BCKE = []
 
     vol = VolumeField(var[:u].grid)
-    mean_vol = mean(vol, dims = 3)
 
-    @info "computing resting and available potential energy density..."
+    @info "computing kinetic energy..."
     for t in 1:length(var[:u].times)
         @info "doing time $t"
         v = var[:v][t]
         u = var[:u][t]
+        
         ke = compute!(Field(@at (Center, Center, Center) (u^2 + v^2) * vol))
 
         push!(KE, 0.5 * sum(interior(ke)))
 
-        if compute_projection
-            btke = 0.5 * sum(interior(ke),         dims = 3) 
-            bcke = 0.5 * sum(interior(ke) .- btke, dims = 3)
-
+        if compute_projection && t == length(var[:u].times)
+            btke = sum(interior(ke),         dims = 3) 
+            bcke = sum(interior(ke) .- btke, dims = 3)
     
             push!(BTKE, btke)
             push!(BCKE, bcke)
@@ -86,7 +85,7 @@ function calculate_Ω(var)
 
     vol = VolumeField(var[:u].grid)
 
-    @info "computing resting and available potential energy density..."
+    @info "computing enstrophy..."
     for t in 1:length(var[:u].times)
         @info "doing time $t"
         ζ = compute!(Field(VerticalVorticityOperation(var, t)^2 * vol))
@@ -103,7 +102,7 @@ function calculate_N²(var)
     vol = VolumeField(var[:u].grid)
     mean_vol = mean(vol)
 
-    @info "computing resting and available potential energy density..."
+    @info "computing stratification..."
     for t in 1:length(var[:u].times)
         @info "doing time $t"
         N² = compute!(Field(StratificationOperation(var, t) * vol))
@@ -114,21 +113,38 @@ function calculate_N²(var)
     return N²avg
 end
 
-function calculate_b_dissipation(var)    
-    b_diss = Float64[]
+using Oceananigans.BoundaryConditions
 
+function calculate_b_budget(var)    
+    dissipation     = Float64[]
+    time_derivative = Float64[]
+    
     vol = VolumeField(var[:u].grid)
-    mean_vol = mean(vol)
+    fill_halo_regions!(vol)
 
-    @info "computing resting and available potential energy density..."
-    for t in 1:length(var[:u].times)
+    b1  = CenterField(var[:b].grid)
+    b2  = CenterField(var[:b].grid)
+
+    @info "computing buoyancy budget..."
+    for t in 1:2:length(var[:b].times)-1
         @info "doing time $t"
-        diss = compute!(Field(VerticalDissipationOperation(var, t) * vol))
+        dt    = (var[:b].times[t+1] - var[:b].times[t]) 
 
-        push!(b_diss, mean(interior(diss)) / mean_vol)
+        set!(b1, var[:b][t])
+        set!(b2, var[:b][t+1])
+
+        fill_halo_regions!((b1, b2))
+        diss1 = compute!(Field(∂z(b1)^2 * vol))
+        diss2 = compute!(Field(∂z(b2)^2 * vol))
+
+        b12 = sum(interior(compute!(Field(b1^2 * vol))))
+        b22 = sum(interior(compute!(Field(b2^2 * vol))))
+        db2dt = (b22 - b12) / dt
+        push!(dissipation, 1e-5 * (sum(interior(diss1)) + sum(interior(diss2))) / 2)
+        push!(time_derivative,     db2dt)
     end
 
-    return b_diss
+    return (; dissipation, time_derivative)
 end
 
 function calculate_deformation_radius(var)    
@@ -137,7 +153,7 @@ function calculate_deformation_radius(var)
     area = AreaField(var[:u].grid)
     mean_area = mean(area)
 
-    @info "computing resting and available potential energy density..."
+    @info "computing deformation radius..."
     for t in 1:length(var[:u].times)
         @info "doing time $t"
         R = compute!(Field(DeformationRadius(var, t) * area))

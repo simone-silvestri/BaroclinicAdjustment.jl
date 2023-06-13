@@ -11,7 +11,7 @@ using BaroclinicAdjustment.Diagnostics: compute_rpe_density,
                                         calculate_N²,
                                         calculate_z★_diagnostics,
                                         calculate_deformation_radius,
-                                        calculate_b_dissipation,
+                                        calculate_b_budget,
                                         compute_spectra
 
 using JLD2
@@ -85,11 +85,12 @@ function save_contours(trailing_character = "_weaker")
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
 
-    enstrophy = Dict()
-    buoyancy  = Dict()
-    vorticity = Dict()
-    energy    = Dict()
-    referenpe = Dict()
+    enstrophy  = Dict()
+    buoyancy   = Dict()
+    yzbuoyancy = Dict()
+    vorticity  = Dict()
+    energy     = Dict()
+    referenpe  = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename)
@@ -105,6 +106,9 @@ function save_contours(trailing_character = "_weaker")
             ζ  = compute!(Field(VerticalVorticityOperation(fields, 400)))
             ζ² = compute!(Field(ζ^2))
 
+            B = compute!(Field(Average(fields[:b][400], dims = 1)))
+
+            yzbuoyancy[String(prefix)] = (interior(B, 1, :, :), )
             KE = compute!(Field(KineticEnergyOperation(fields, 400)))
 
             enstrophy[Symbol(prefix)] = (interior(ζ², :, :, 25), interior(ζ², :, :, 50))
@@ -115,11 +119,12 @@ function save_contours(trailing_character = "_weaker")
         end
     end
 
-    write_file!("contours" * trailing_character * ".jld2", "enstrophy",   enstrophy)
-    write_file!("contours" * trailing_character * ".jld2", "vorticity",   vorticity)
-    write_file!("contours" * trailing_character * ".jld2", "buoyancy",    buoyancy )
-    write_file!("contours" * trailing_character * ".jld2", "energy",      energy   )
-    write_file!("contours" * trailing_character * ".jld2", "referencepe", referenpe)
+    write_file!("contours" * trailing_character * ".jld2", "enstrophy",   enstrophy )
+    write_file!("contours" * trailing_character * ".jld2", "vorticity",   vorticity )
+    write_file!("contours" * trailing_character * ".jld2", "buoyancy",    buoyancy  )    
+    write_file!("contours" * trailing_character * ".jld2", "yzbuoyancy2",  yzbuoyancy)
+    write_file!("contours" * trailing_character * ".jld2", "energy",      energy    )
+    write_file!("contours" * trailing_character * ".jld2", "referencepe", referenpe )
 end
 
 function calculate_diagnostics(trailing_character = "_weaker")
@@ -129,12 +134,13 @@ function calculate_diagnostics(trailing_character = "_weaker")
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
 
-    energies  = Dict()
-    vardiss   = Dict()
+    # energies  = Dict()
+    # vardiss   = Dict()
     spectras  = Dict()
 
-    enstrophies = Dict()
-    stratif     = Dict()
+    # enstrophies = Dict()
+    # stratif     = Dict()
+    # budgetB     = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename)
@@ -143,28 +149,40 @@ function calculate_diagnostics(trailing_character = "_weaker")
             fields = all_fieldtimeseries(filename; arch = CPU())
 
             GC.gc()
-            energy    = compute_energy_diagnostics(fields)
-            variance  = calculate_b_dissipation(fields)
-            enstrophy = calculate_Ω(fields)
-            N²        = calculate_N²(fields)
+            # energy    = compute_energy_diagnostics(fields)
+            # budget    = calculate_b_budget(fields)
+            # enstrophy = calculate_Ω(fields)
+            # N²        = calculate_N²(fields)
+            if length(fields[:u].times) > 90
+                spectra = compute_spectra(fields, 80:100)
+                spectras[(Symbol(prefix), :90)]  = spectra
+            end
+            if length(fields[:u].times) > 190
+                spectra = compute_spectra(fields, 180:200)
+                spectras[(Symbol(prefix), :190)] = spectra
+            end
+            if length(fields[:u].times) > 290
+                spectra = compute_spectra(fields, 280:300)
+                spectras[(Symbol(prefix), :290)] = spectra
+            end
             if length(fields[:u].times) > 390
                 spectra = compute_spectra(fields, 380:400)
-                spectras[Symbol(prefix)] = spectra
+                spectras[(Symbol(prefix), :390)] = spectra
             end
-
-            energies[Symbol(prefix)]    = energy
-            vardiss[Symbol(prefix)]     = variance
-            enstrophies[Symbol(prefix)] = enstrophy
-            stratif[Symbol(prefix)]     = N²
+            # energies[Symbol(prefix)]    = energy
+            # enstrophies[Symbol(prefix)] = enstrophy
+            # stratif[Symbol(prefix)]     = N²
+            # budgetB[Symbol(prefix)]     = budget
         end
     end
 
-    write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
-    write_file!("stratif" *     trailing_character * ".jld2", stratif)
-    write_file!("energies" *    trailing_character * ".jld2", energies)
-    write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
+    # write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
+    # write_file!("stratif" *     trailing_character * ".jld2", stratif)
+    # write_file!("energies" *    trailing_character * ".jld2", energies)
+    # write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
+    # write_file!("budgetB" *     trailing_character * ".jld2", budgetB)
     write_file!("spectra" *     trailing_character * ".jld2", spectras)
-    
+
     return nothing
 end
 

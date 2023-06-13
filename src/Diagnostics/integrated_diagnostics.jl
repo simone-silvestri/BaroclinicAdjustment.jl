@@ -110,12 +110,19 @@ end
 
 function add_kinetic_energy_and_vorticity_timeseries!(fields::Dict)
 
-    ζ =     FieldTimeSeries{Face, Face, Center}(fields[:u].grid, fields[:u].times)
     E = FieldTimeSeries{Center, Center, Center}(fields[:u].grid, fields[:u].times)
+    ζ = FieldTimeSeries{Face, Face, Center}(fields[:u].grid, fields[:u].times)
+    u = Field{Face, Center, Center}(fields[:u].grid)
+    v = Field{Center, Face, Center}(fields[:u].grid)
 
     for t in 1:length(E.times)
-        set!(ζ[t], VerticalVorticityOperation(fields, t))
-        set!(E[t], KineticEnergyOperation(fields, t))
+        set!(u, fields[:u][t])
+        set!(v, fields[:v][t])
+
+        fill_halo_regions!((u, v))
+
+        set!(ζ[t], VerticalVorticityOperation((; u, v)))
+        set!(E[t], KineticEnergyOperation((; u, v)))
     end
 
     fields[:E] = E

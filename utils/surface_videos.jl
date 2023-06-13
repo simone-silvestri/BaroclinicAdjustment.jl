@@ -42,8 +42,6 @@ function surface_videos(trailing_character = "_weaker")
                    "weno5v", "weno5d", "weno7v", "weno7d", "weno9v", "weno9d", "wenoHv", "weno9MD",
                    "weno5F", "weno7F", "weno9F"]
 
-    file_prefix = ["weno9pV2", "weno9pV"]
-
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
@@ -82,16 +80,16 @@ function surface_videos(trailing_character = "_weaker")
         
             record_video!("lowvort_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
 
-            @info "z-vorticity video $filename"    
-            ζ = @lift(interior(VerticalVorticity(f, $iter), 160, :, :))
+            # @info "z-vorticity video $filename"    
+            # ζ = @lift(interior(VerticalVorticity(f, $iter), 160, :, :))
             
-            fig = Figure()
-            ax = Axis(fig[1, 1])            # 
-            heatmap!(ax, ζ, colorrange = (-1e-5, 1e-5))
-            hidedecorations!(ax)
-            hidespines!(ax)
+            # fig = Figure()
+            # ax = Axis(fig[1, 1])            # 
+            # heatmap!(ax, ζ, colorrange = (-1e-5, 1e-5))
+            # hidedecorations!(ax)
+            # hidespines!(ax)
 
-            record_video!("zvort_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
+            # record_video!("zvort_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
 
             # @info "kinetic energy video $filename"    
             # E = @lift(interior(KineticEnergy(f, $iter), :, :, 50))
@@ -116,6 +114,15 @@ function surface_videos(trailing_character = "_weaker")
             hidespines!(ax)
             record_video!("buoyancy_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
 
+            @info "mean buoyancy video $filename"    
+            B = @lift(mean(interior(f[:b][$iter], :, :, :), dims = 2))
+
+            fig = Figure()
+            ax = Axis(fig[1, 1])            # 
+            contourf!(ax, B, levels = range(0, 0.006, length = 10), colormap = :thermometer)
+            hidedecorations!(ax)
+            hidespines!(ax)
+            record_video!("buoyancy_mean_" * prefix * trailing_character * ".jld2", fig, iter, Nt)
         end
     end
 end
