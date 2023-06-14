@@ -114,6 +114,7 @@ end
 include("baroclinic_adjustment_latlon.jl")
 include("baroclinic_adjustment_rect.jl")
 include("baroclinic_double_gyre.jl")
+include("restoring_baroclinic_adjustment_latlon.jl")
 include("run_simulations.jl")
 include("Diagnostics/Diagnostics.jl")
 

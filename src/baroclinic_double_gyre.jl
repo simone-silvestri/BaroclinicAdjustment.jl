@@ -24,7 +24,7 @@ function baroclinic_double_gyre(resolution, filename, FT::DataType = Float64; ar
     Nφ = Base.Int(Lφ ÷ resolution)
     Nz = 50
 
-    σ = 1.2 # stretching factor
+    σ = 2.0 # stretching factor
     hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
     grid = LatitudeLongitudeGrid(arch, FT;
@@ -82,7 +82,7 @@ function baroclinic_double_gyre(resolution, filename, FT::DataType = Float64; ar
     @inline v_drag(i, j, grid, clock, fields, p) = - p.μ * Δzᶜᶠᶜ(i, j, 1, grid) * fields.v[i, j, 1]
 
     u_stress_bc = FluxBoundaryCondition(u_stress; parameters)
-    b_relax_bc  = FluxBoundaryCondition(nothing) #b_relax;  parameters, discrete_form = true)
+    b_relax_bc  = FluxBoundaryCondition(b_relax;  parameters, discrete_form = true)
     u_drag_bc   = FluxBoundaryCondition(u_drag;   parameters, discrete_form = true)
     v_drag_bc   = FluxBoundaryCondition(v_drag;   parameters, discrete_form = true)
 
