@@ -51,35 +51,7 @@ function compute_zonal_mean(f::Dict)
     return (; ū, v̄, w̄, b̄)
 end
 
-function generate_names()
-
-    names = []
-
-    # First five are the "Explicit" LES closures
-    push!(names, "bilap", "leith", "lapleith", "smag", "qgleith")
-
-    # Next twelve are the "Implicit" LES closures
-    for order in [5, 9]
-        for upwinding_treatment in (CrossAndSelfUpwinding(), OnlySelfUpwinding(), VelocityUpwinding())
-            for vorticity_stencil in (VelocityStencil(), DefaultStencil())
-                adv = VectorInvariant(; vorticity_scheme = WENO(; order), 
-                                        vorticity_stencil,
-                                        vertical_scheme = WENO(), 
-                                        upwinding_treatment)
-                push!(names, getname(adv))
-            end
-        end
-    end
-
-    push!(names, "weno5pAllD", "weno9pAllD")
-    push!(names, "weno5Fl", "weno9Fl")
-    push!(names, "weno5MD", "weno9MD")
-
-    return names
-end
-
-function save_contours(trailing_character = "_weaker")
-    file_prefix = generate_names()
+function save_contours(trailing_character = "_weaker", file_prefix = generate_names())
 
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
@@ -127,19 +99,18 @@ function save_contours(trailing_character = "_weaker")
     write_file!("contours" * trailing_character * ".jld2", "referencepe", referenpe )
 end
 
-function calculate_diagnostics(trailing_character = "_weaker")
-    file_prefix = generate_names()
+function calculate_diagnostics(trailing_character = "_weaker", file_prefix = generate_names())
 
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
 
-    # energies  = Dict()
-    # vardiss   = Dict()
-    spectras  = Dict()
-    # enstrophies = Dict()
-    # stratif     = Dict()
-    # budgetB     = Dict()
+    energies    = Dict()
+    vardiss     = Dict()
+    spectras    = Dict()
+    enstrophies = Dict()
+    stratif     = Dict()
+    budgetB     = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename)
@@ -150,63 +121,29 @@ function calculate_diagnostics(trailing_character = "_weaker")
             spectras[Symbol(prefix)] = []
 
             GC.gc()
-            # energy    = compute_energy_diagnostics(fields)
-            # budget    = calculate_b_budget(fields)
-            # enstrophy = calculate_Ω(fields)
-            # N²        = calculate_N²(fields)
-            for range in (80:100, 180:200, 280:300, 380:400)
+            energy    = compute_energy_diagnostics(fields)
+            budget    = calculate_b_budget(fields)
+            enstrophy = calculate_Ω(fields)
+            N²        = calculate_N²(fields)
+            for range in (45:55, 95:105, 145:155, 190:200)
                 if length(fields[:u].times) >= range[end]
                     spectra = compute_spectra(fields, range)
                     push!(spectras[Symbol(prefix)], spectra)
                 end
             end
-            # energies[Symbol(prefix)]    = energy
-            # enstrophies[Symbol(prefix)] = enstrophy
-            # stratif[Symbol(prefix)]     = N²
-            # budgetB[Symbol(prefix)]     = budget
+            energies[Symbol(prefix)]    = energy
+            enstrophies[Symbol(prefix)] = enstrophy
+            stratif[Symbol(prefix)]     = N²
+            budgetB[Symbol(prefix)]     = budget
         end
     end
 
-    # write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
-    # write_file!("stratif" *     trailing_character * ".jld2", stratif)
-    # write_file!("energies" *    trailing_character * ".jld2", energies)
-    # write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
-    # write_file!("budgetB" *     trailing_character * ".jld2", budgetB)
+    write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
+    write_file!("stratif" *     trailing_character * ".jld2", stratif)
+    write_file!("energies" *    trailing_character * ".jld2", energies)
+    write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
+    write_file!("budgetB" *     trailing_character * ".jld2", budgetB)
     write_file!("spectra" *     trailing_character * ".jld2", spectras)
 
-    return nothing
-end
-
-function write_file!(name, prefix, var) 
-    if isfile(name)
-        jldopen(name,"r+") do f
-            for (key, value) in var
-                f[prefix * "/" * string(key)] = value
-            end
-        end
-    else
-        jldopen(name,"w") do f
-            for (key, value) in var
-                f[prefix * "/" * string(key)] = value
-            end
-        end
-    end
-    return nothing
-end
-
-function write_file!(name, var) 
-    if isfile(name)
-        jldopen(name,"r+") do f
-            for (key, value) in var
-                f[string(key)] = value
-            end
-        end
-    else
-        jldopen(name,"w") do f
-            for (key, value) in var
-                f[string(key)] = value
-            end
-        end
-    end
     return nothing
 end

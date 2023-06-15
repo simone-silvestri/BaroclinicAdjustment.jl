@@ -1,4 +1,5 @@
 using Statistics: mean
+using Oceananigans.Grids: node
 
 function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; arch = GPU(), 
                                                  horizontal_closure = nothing,
@@ -49,20 +50,20 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
     Δb = 0.006
 
     # Parameters
-    param = (; N², Δy, Δb)
+    param = (; N², Δy, Δb, ramp)
 
-    @inline bᵢ(x, y, z, p) = p.N² * z + p.Δb * ramp(x, y, p.Δy) 
+    @inline bᵢ(x, y, z, p) = p.N² * z + p.Δb * p.ramp(x, y, p.Δy) 
 
-    B = Field{Center, Center, Nothing}(grid)
+    B = Field{Nothing, Center, Center}(grid)
 
-    @inline function b_forcing(i, j, k, grid, clock, fields, p)
+    @inline function B_forcing(i, j, k, grid, clock, fields, p)
         λ, φ, z = node(i, j, k, grid, Center(), Center(), Center())
-        @inbounds B  = fields.B[i, j, k]
+        @inbounds Bᴹ = fields.B[1, j, k]
         @inbounds bᴿ = p.bᵢ(λ, φ, z, p)
-        return - p.λ * (B - bᴿ)
+        return - p.λ * (Bᴹ - bᴿ)
     end
 
-    Fb = Forcing(b_forcing; discrete = true, parameters = (; bᵢ, N², Δy, Δb, λ = 1 / 50days))
+    Fb = Forcing(B_forcing; discrete_form = true, parameters = (; ramp, bᵢ, N², Δy, Δb, λ = 1 / 50days))
 
     free_surface = SplitExplicitFreeSurface(FT; substeps)
     @info "running with substeps $substeps"
@@ -87,14 +88,18 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
 
     set!(model, b=bᵢᵣ)
 
+    model.auxiliary_fields.B .= mean(model.tracers.b, dims = 1)
+
     #####
     ##### Simulation building
     #####
 
     simulation = Simulation(model; Δt, stop_time)
 
-    function set_average_B(simulation)
-        simulation.model.auxiliary_fields.B .= mean(simulation.model.tracers.b, dims = 1)
+    @show simulation.model.auxiliary_fields.B
+
+    function set_average_B!(sim)
+        sim.model.auxiliary_fields.B .= mean(sim.model.tracers.b, dims=1)
         return nothing
     end
 
@@ -122,7 +127,7 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
     end
 
     simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
-    simulation.callbacks[:set_average_B]  = Callback(set_average_B,  IterationInterval(1))
+    simulation.callbacks[:set_average_B!] = Callback(set_average_B!, IterationInterval(1))
 
     reduced_outputs!(simulation, filename)
 
