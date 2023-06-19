@@ -164,8 +164,7 @@ function calculate_deformation_radius(var)
     return LR
 end
 
-@kernel function _slope_operation(grid, B)
-    i, j, k = @index(Global, NTuple)
+@inline function _slope_operation(i, j, k, grid, B)
 
     ∂yb = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᶜᶠᶜ, B)
     ∂zb = max(1e-20, ℑyᵃᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, B))
