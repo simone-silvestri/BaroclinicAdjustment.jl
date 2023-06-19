@@ -9,6 +9,7 @@ using BaroclinicAdjustment.Diagnostics: compute_rpe_density,
                                         calculate_RPE,
                                         calculate_Ω,
                                         calculate_N²,
+                                        calculate_slope,
                                         calculate_z★_diagnostics,
                                         calculate_deformation_radius,
                                         calculate_b_budget,
@@ -105,12 +106,13 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
 
-    energies    = Dict()
-    vardiss     = Dict()
-    spectras    = Dict()
-    enstrophies = Dict()
-    stratif     = Dict()
-    budgetB     = Dict()
+    # energies    = Dict()
+    # vardiss     = Dict()
+    # spectras    = Dict()
+    # enstrophies = Dict()
+    # stratif     = Dict()
+    # budgetB     = Dict()
+    slopes      = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename)
@@ -118,32 +120,35 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             @info "doing file " filename
             fields = all_fieldtimeseries(filename; arch = CPU())
             
-            spectras[Symbol(prefix)] = []
+            # spectras[Symbol(prefix)] = []
 
             GC.gc()
-            energy    = compute_energy_diagnostics(fields)
-            budget    = calculate_b_budget(fields)
-            enstrophy = calculate_Ω(fields)
-            N²        = calculate_N²(fields)
-            for range in (45:55, 95:105, 145:155, 190:200)
-                if length(fields[:u].times) >= range[end]
-                    spectra = compute_spectra(fields, range)
-                    push!(spectras[Symbol(prefix)], spectra)
-                end
-            end
-            energies[Symbol(prefix)]    = energy
-            enstrophies[Symbol(prefix)] = enstrophy
-            stratif[Symbol(prefix)]     = N²
-            budgetB[Symbol(prefix)]     = budget
+            # energy    = compute_energy_diagnostics(fields)
+            # budget    = calculate_b_budget(fields)
+            # enstrophy = calculate_Ω(fields)
+            # N²        = calculate_N²(fields)
+            slope     = calculate_slope(fields)
+            # for range in (45:55, 95:105, 145:155, 190:200)
+            #     if length(fields[:u].times) >= range[end]
+            #         spectra = compute_spectra(fields, range)
+            #         push!(spectras[Symbol(prefix)], spectra)
+            #     end
+            # end
+            # energies[Symbol(prefix)]    = energy
+            # enstrophies[Symbol(prefix)] = enstrophy
+            # stratif[Symbol(prefix)]     = N²
+            # budgetB[Symbol(prefix)]     = budget
+            slopes[Symbol(prefix)]      = slope
         end
     end
 
-    write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
-    write_file!("stratif" *     trailing_character * ".jld2", stratif)
-    write_file!("energies" *    trailing_character * ".jld2", energies)
-    write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
-    write_file!("budgetB" *     trailing_character * ".jld2", budgetB)
-    write_file!("spectra" *     trailing_character * ".jld2", spectras)
+    # write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
+    # write_file!("stratif" *     trailing_character * ".jld2", stratif)
+    # write_file!("energies" *    trailing_character * ".jld2", energies)
+    # write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
+    # write_file!("budgetB" *     trailing_character * ".jld2", budgetB)
+    # write_file!("spectra" *     trailing_character * ".jld2", spectras)
+    write_file!("slope" *     trailing_character * ".jld2", slopes)
 
     return nothing
 end
