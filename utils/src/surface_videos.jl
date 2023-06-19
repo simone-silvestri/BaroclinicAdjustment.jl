@@ -10,8 +10,6 @@ using Oceananigans
 using Oceananigans.Units
 using JLD2
 
-add_trailing_name(name) = name * "_snapshots.jld2"
-
 function record_video!(name, fig, iter, Nt) 
     CairoMakie.record(fig, name * ".mp4", 1:Nt, framerate = 11) do i
         @info "step $i"; 

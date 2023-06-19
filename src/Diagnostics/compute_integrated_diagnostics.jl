@@ -174,9 +174,10 @@ end
 
 function calculate_slope(var)    
     slope = Float64[]
-    b = CenterField(var[:b].grid)
+    grid  = var[:b].grid
+    b = CenterField(grid)
 
-    vol = VolumeField(var[:u].grid)
+    vol = VolumeField(grid)
     mean_vol = mean(vol)
 
     @info "computing deformation radius..."
