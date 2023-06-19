@@ -67,12 +67,12 @@ function testcases(FT)
 
     # Next twelve are the "Implicit" LES closures
     for order in [5, 9]
-        for upwinding_treatment in (CrossAndSelfUpwinding(), OnlySelfUpwinding(), VelocityUpwinding())
+        for Upwind in (CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding)
             for vorticity_stencil in (VelocityStencil(), DefaultStencil())
                 push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order), 
                                                            vorticity_stencil,
                                                            vertical_scheme = WENO(FT), 
-                                                           upwinding_treatment))
+                                                           upwinding_treatment = Upwind(cross_scheme = WENO(FT))))
                 push!(horizontal_closures, nothing)
                 push!(names, getname(advection_schemes[end]))
             end
