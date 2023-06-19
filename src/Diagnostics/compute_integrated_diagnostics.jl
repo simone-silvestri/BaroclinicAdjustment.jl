@@ -187,7 +187,7 @@ function calculate_slope(var)
         fill_halo_regions!(b)
         B = mean(b, dims = 1)
         S = KernelFunctionOperation{Nothing, Face, Face}(_slope_operation, grid, B)
-        push!(slope, mean(filter(x -> x != 0, interior(S))) / mean_vol)
+        push!(slope, mean(filter(x -> x != 0, interior(S))))
     end
 
     return slope
