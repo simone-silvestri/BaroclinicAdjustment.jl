@@ -34,7 +34,7 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
 
     substeps = barotropic_substeps(max_Δt, grid, gravity)
 
-    @inline ramp(λ, y, Δ) = min(max(0, (φ₀ + y) / Δ + 1/2), 1)
+    @inline ramp(λ, y, Δ) = min(max(0, (- φ₀ + y) / Δ + 1/2), 1)
 
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
     Δy = 1.0 # degree

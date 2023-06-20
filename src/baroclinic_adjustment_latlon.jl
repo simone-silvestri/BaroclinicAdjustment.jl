@@ -2,13 +2,13 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                                    horizontal_closure = nothing,
                                                    momentum_advection = VectorInvariant(), 
                                                    background_νz = 1e-4,
-                                                   φ₀ = -50)
+                                                   φ₀ = - 50)
     
     # Domain
     Lz = 1kilometers     # depth [m]
     Ny = Base.Int(20 / resolution)
     Nz = 50
-    stop_time = restoring ? 400days : 200days
+    stop_time = 200days
     Δt = 2.5minutes
 
     grid = LatitudeLongitudeGrid(arch, FT;
@@ -31,8 +31,9 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
 
     substeps = barotropic_substeps(max_Δt, grid, gravity)
 
-    @inline ramp(λ, y, Δ) = min(max(0, (φ₀ + y) / Δ + 1/2), 1)
+    @inline ramp(λ, y, Δ) = min(max(0, (- φ₀ + y) / Δ + 1/2), 1)
 
+    N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
     Δy = 1.0 # degree
     Δb = 0.006
 
