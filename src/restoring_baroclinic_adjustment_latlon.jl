@@ -5,7 +5,7 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
                                                  horizontal_closure = nothing,
                                                  momentum_advection = VectorInvariant(), 
                                                  background_νz = 1e-4,
-                                                 xdirection = true)
+                                                 φ₀ = -50)
     
     # Domain
     Lz = 1kilometers     # depth [m]
@@ -14,22 +14,13 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
     stop_time = 400days
     Δt = 2.5minutes
 
-    if xdirection 
-        grid = LatitudeLongitudeGrid(arch, FT;
-                                    topology = (Periodic, Bounded, Bounded),
-                                    size = (Ny, Ny, Nz), 
-                                    longitude = (-10, 10),
-                                    latitude = (-60, -40),
-                                    z = (-Lz, 0),
-                                    halo = (6, 6, 6))
-    else
-        grid = LatitudeLongitudeGrid(arch, FT;
-                                     topology = (Flat, Bounded, Bounded),
-                                     size = (Ny, Nz), 
-                                     latitude = (-60, -40),
-                                     z = (-Lz, 0),
-                                     halo = (6, 6))
-    end
+    grid = LatitudeLongitudeGrid(arch, FT;
+                                topology = (Periodic, Bounded, Bounded),
+                                size = (Ny, Ny, Nz), 
+                                longitude = (-10, 10),
+                                latitude = (φ₀-10, φ₀+10),
+                                z = (-Lz, 0),
+                                halo = (6, 6, 6))
 
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(FT; convective_κz = 0.1,
                                                                    convective_νz = 0.0,
@@ -43,7 +34,7 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
 
     substeps = barotropic_substeps(max_Δt, grid, gravity)
 
-    @inline ramp(λ, y, Δ) = min(max(0, (50 + y) / Δ + 1/2), 1)
+    @inline ramp(λ, y, Δ) = min(max(0, (φ₀ + y) / Δ + 1/2), 1)
 
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
     Δy = 1.0 # degree
@@ -65,6 +56,20 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
 
     Fb = Forcing(B_forcing; discrete_form = true, parameters = (; ramp, bᵢ, N², Δy, Δb, λ = 1 / 50days))
 
+    @inline ϕ²(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
+
+    @inline speedᶠᶜᶜ(i, j, k, grid, fields) = sqrt(fields.u[i, j, k]^2 + ℑxyᶠᶜᵃ(i, j, k, grid, ϕ², fields.v))
+    @inline speedᶜᶠᶜ(i, j, k, grid, fields) = sqrt(ℑxyᶜᶠᵃ(i, j, k, grid, ϕ², fields.u) + fields.v[i, j, k]^2)
+ 
+    @inline u_drag(i, j, grid, clock, fields, τ) = - τ * fields.u[i, j, 1] * speedᶠᶜᶜ(i, j, 1, grid, fields)
+    @inline v_drag(i, j, grid, clock, fields, τ) = - τ * fields.v[i, j, 1] * speedᶜᶠᶜ(i, j, 1, grid, fields)
+
+    u_drag_bcs = FluxBoundaryCondition(u_drag; parameters = 0.001)    
+    v_drag_bcs = FluxBoundaryCondition(v_drag; parameters = 0.001)
+
+    u_bcs = FieldBoundaryConditions(bottom = u_drag_bcs)
+    v_bcs = FieldBoundaryConditions(bottom = v_drag_bcs)
+
     free_surface = SplitExplicitFreeSurface(FT; substeps)
     @info "running with substeps $substeps"
     @info "Building a model..."
@@ -77,6 +82,7 @@ function restoring_baroclinic_adjustment_latlong(resolution, filename, FT::DataT
                                         momentum_advection,
                                         auxiliary_fields = (; B),
                                         forcing = (; b = Fb),
+                                        boundary_conditions = (; u = u_bcs, v = v_bcs),
                                         tracer_advection = WENO(FT),
                                         free_surface)
 

@@ -1,7 +1,7 @@
 using Oceananigans.Grids: φnode
 
 function baroclinic_double_gyre(resolution, filename, FT::DataType = Float64; arch = GPU(), 
-                                horizontal_closure = nothing,
+                                horizontal_closure = nothing, φ₀ = -50,
                                 momentum_advection = VectorInvariant())
 
     # Domain

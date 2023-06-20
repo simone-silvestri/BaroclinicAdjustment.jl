@@ -9,11 +9,11 @@ using BaroclinicAdjustment.Diagnostics: compute_rpe_density,
                                         calculate_RPE,
                                         calculate_Ω,
                                         calculate_N²,
-                                        calculate_slope,
                                         calculate_z★_diagnostics,
                                         calculate_deformation_radius,
                                         calculate_b_budget,
-                                        compute_spectra
+                                        compute_spectra,
+                                        VolumeField
 
 using JLD2
 
@@ -100,6 +100,26 @@ function save_contours(trailing_character = "_weaker", file_prefix = generate_na
     write_file!("contours" * trailing_character * ".jld2", "referencepe", referenpe )
 end
 
+function calculate_fluxes(var)
+
+    fluxes = []        
+    vol = VolumeField(var[:u].grid)
+    mean_vol = mean(interior(vol))
+
+    for t in 1:length(var[:u].times)
+        @info "doing time $t"
+        b  = var[:b][t]
+        w  = var[:w][t]        
+        v  = var[:v][t]
+        WB = mean(w * b, dims = 1)
+        VB = mean(v * b, dims = 1)
+
+        push!(fluxes, (; wb = mean(WB * vol)[1, 1, 1] / mean_vol, vb = mean(VB * vol)[1, 1, 1] / mean_vol))
+    end
+
+    return fluxes
+end
+
 function calculate_diagnostics(trailing_character = "_weaker", file_prefix = generate_names())
 
     @show file_prefix
@@ -112,7 +132,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
     # enstrophies = Dict()
     # stratif     = Dict()
     # budgetB     = Dict()
-    slopes      = Dict()
+    fluxes      = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename)
@@ -127,7 +147,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             # budget    = calculate_b_budget(fields)
             # enstrophy = calculate_Ω(fields)
             # N²        = calculate_N²(fields)
-            slope     = calculate_slope(fields)
+            fluxe     = calculate_fluxes(fields)
             # for range in (45:55, 95:105, 145:155, 190:200)
             #     if length(fields[:u].times) >= range[end]
             #         spectra = compute_spectra(fields, range)
@@ -138,7 +158,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             # enstrophies[Symbol(prefix)] = enstrophy
             # stratif[Symbol(prefix)]     = N²
             # budgetB[Symbol(prefix)]     = budget
-            slopes[Symbol(prefix)]      = slope
+            fluxes[Symbol(prefix)]      = fluxe
         end
     end
 
@@ -148,7 +168,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
     # write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
     # write_file!("budgetB" *     trailing_character * ".jld2", budgetB)
     # write_file!("spectra" *     trailing_character * ".jld2", spectras)
-    write_file!("slope" *     trailing_character * ".jld2", slopes)
+    write_file!("fluxes" *     trailing_character * ".jld2", fluxes)
 
     return nothing
 end

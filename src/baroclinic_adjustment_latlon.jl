@@ -1,8 +1,8 @@
 function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; arch = GPU(), 
-                                                     horizontal_closure = nothing,
-                                                     momentum_advection = VectorInvariant(), 
-                                                     background_νz = 1e-4,
-                                                     xdirection = true)
+                                                   horizontal_closure = nothing,
+                                                   momentum_advection = VectorInvariant(), 
+                                                   background_νz = 1e-4,
+                                                   φ₀ = -50)
     
     # Domain
     Lz = 1kilometers     # depth [m]
@@ -11,22 +11,13 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     stop_time = restoring ? 400days : 200days
     Δt = 2.5minutes
 
-    if xdirection 
-        grid = LatitudeLongitudeGrid(arch, FT;
-                                    topology = (Periodic, Bounded, Bounded),
-                                    size = (Ny, Ny, Nz), 
-                                    longitude = (-10, 10),
-                                    latitude = (-60, -40),
-                                    z = (-Lz, 0),
-                                    halo = (6, 6, 6))
-    else
-        grid = LatitudeLongitudeGrid(arch, FT;
-                                     topology = (Flat, Bounded, Bounded),
-                                     size = (Ny, Nz), 
-                                     latitude = (-60, -40),
-                                     z = (-Lz, 0),
-                                     halo = (6, 6))
-    end
+    grid = LatitudeLongitudeGrid(arch, FT;
+                                topology = (Periodic, Bounded, Bounded),
+                                size = (Ny, Ny, Nz), 
+                                longitude = (-10, 10),
+                                latitude = (φ₀-10, φ₀+10),
+                                z = (-Lz, 0),
+                                halo = (6, 6, 6))
 
     vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(FT; convective_κz = 0.1,
                                                                    convective_νz = 0.0,
@@ -40,9 +31,8 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
 
     substeps = barotropic_substeps(max_Δt, grid, gravity)
 
-    @inline ramp(λ, y, Δ) = min(max(0, (50 + y) / Δ + 1/2), 1)
+    @inline ramp(λ, y, Δ) = min(max(0, (φ₀ + y) / Δ + 1/2), 1)
 
-    N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
     Δy = 1.0 # degree
     Δb = 0.006
 

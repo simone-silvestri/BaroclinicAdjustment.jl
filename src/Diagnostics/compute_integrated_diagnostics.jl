@@ -163,32 +163,3 @@ function calculate_deformation_radius(var)
 
     return LR
 end
-
-@inline function _slope_operation(i, j, k, grid, B)
-
-    ∂yb = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᶜᶠᶜ, B)
-    ∂zb = max(1e-20, ℑyᵃᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, B))
-
-    return (∂yb / ∂zb)
-end
-
-function calculate_slope(var)    
-    slope = Float64[]
-    grid  = var[:b].grid
-    b = CenterField(grid)
-
-    vol = VolumeField(grid)
-    mean_vol = mean(vol)
-
-    @info "computing deformation radius..."
-    for t in 1:length(var[:u].times)
-        @info "doing time $t"
-        set!(b, var[:b][t])
-        fill_halo_regions!(b)
-        B = mean(b, dims = 1)
-        S = KernelFunctionOperation{Nothing, Face, Face}(_slope_operation, grid, B)
-        push!(slope, mean(filter(x -> x != 0, interior(S))))
-    end
-
-    return slope
-end
