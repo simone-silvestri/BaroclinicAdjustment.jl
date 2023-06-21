@@ -72,7 +72,7 @@ function testcases(FT)
                 push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order), 
                                                            vorticity_stencil,
                                                            vertical_scheme = WENO(FT), 
-                                                           upwinding_treatment = Upwind(cross_scheme = WENO(FT))))
+                                                           upwinding= Upwind(cross_scheme = WENO(FT))))
                 push!(horizontal_closures, nothing)
                 push!(names, getname(advection_schemes[end]))
             end
@@ -83,12 +83,12 @@ function testcases(FT)
     for order in [5, 9]
         push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order),  
                                                    vorticity_stencil = DefaultStencil(),
-                                                   upwinding_treatment = OnlySelfUpwinding(;
-                                                                         cross_scheme = WENO(FT),
-                                                                         δU_stencil  = DefaultStencil(),
-                                                                         δV_stencil  = DefaultStencil(),
-                                                                         δu²_stencil = DefaultStencil(),
-                                                                         δv²_stencil = DefaultStencil()),
+                                                   upwinding= OnlySelfUpwinding(;
+                                                                                cross_scheme = WENO(FT),
+                                                                                δU_stencil  = DefaultStencil(),
+                                                                                δV_stencil  = DefaultStencil(),
+                                                                                δu²_stencil = DefaultStencil(),
+                                                                                δv²_stencil = DefaultStencil()),
                                                    vertical_scheme = WENO(FT)))
                 
         push!(horizontal_closures, nothing)
@@ -112,7 +112,6 @@ function testcases(FT)
 end
 
 include("baroclinic_adjustment_latlon.jl")
-include("baroclinic_adjustment_rect.jl")
 include("baroclinic_double_gyre.jl")
 include("restoring_baroclinic_adjustment_latlon.jl")
 include("run_simulations.jl")

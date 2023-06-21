@@ -46,12 +46,12 @@ function generate_names()
 
     # Next twelve are the "Implicit" LES closures
     for order in [5, 9]
-        for upwinding_treatment in (CrossAndSelfUpwinding(), OnlySelfUpwinding(), VelocityUpwinding())
+        for Upwind in (CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding)
             for vorticity_stencil in (VelocityStencil(), DefaultStencil())
                 adv = VectorInvariant(; vorticity_scheme = WENO(; order), 
-                                        vorticity_stencil,
-                                        vertical_scheme = WENO(), 
-                                        upwinding_treatment)
+                                                           vorticity_stencil,
+                                                           vertical_scheme = WENO(), 
+                                                           upwinding= Upwind(cross_scheme = WENO()))
                 push!(names, getname(adv))
             end
         end
