@@ -25,7 +25,7 @@ using Oceananigans.Operators: ℑxyz
    return A^2 * dynamic_visc
 end
 
-function smagorinski_viscosity(formulation, FT::DataType = Float64; Cₛₘ = 0.45, Area = Δ²ᵃᵃᵃ)
+function smagorinski_viscosity(formulation, FT::DataType = Float64; Cₛₘ = FT(0.45), Area = Δ²ᵃᵃᵃ)
 
     @show C = (Cₛₘ / π)^2 / 8
 
@@ -54,7 +54,7 @@ end
     return dynamic_visc * A^(5/2)
 end
 
-function leith_viscosity(formulation, FT::DataType = Float64; Cₗ = 1.0, Area = Δ²ᵃᵃᵃ)
+function leith_viscosity(formulation, FT::DataType = Float64; Cₗ = FT(1.0), Area = Δ²ᵃᵃᵃ)
 
     @show C = (Cₗ / π)^3 / 8
 
@@ -87,7 +87,7 @@ end
     return dynamic_visc * A^(3/2)
 end
 
-function leith_laplacian_viscosity(formulation = HorizontalFormulation(), FT::DataType = Float64; Cₗ = 1.0, Area = Δ²ᵃᵃᵃ)
+function leith_laplacian_viscosity(formulation = HorizontalFormulation(), FT::DataType = Float64; Cₗ = FT(1.0), Area = Δ²ᵃᵃᵃ)
 
     @show C = (Cₗ / π)^3 
 
