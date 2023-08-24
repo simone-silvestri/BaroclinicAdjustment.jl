@@ -11,11 +11,15 @@ using BaroclinicAdjustment.Diagnostics: compute_rpe_density,
                                         calculate_N²,
                                         calculate_z★_diagnostics,
                                         calculate_deformation_radius,
-                                        calculate_b_budget,
                                         compute_spectra,
-                                        VolumeField
+                                        VolumeField,
+                                        KineticEnergyOperation,
+                                        StratificationOperation,
+                                        propagate,
+                                        time_average
 
 using JLD2
+using CUDA
 
 using Oceananigans.Advection: CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding
 using Oceananigans.Advection: VelocityStencil, DefaultStencil
@@ -24,151 +28,158 @@ using BaroclinicAdjustment.Diagnostics: VerticalVorticityOperation, KineticEnerg
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
-function compute_energy_diagnostics(f::Dict)
+function compute_energy_diagnostics(f::Dict, iterations)
 
-    KE, BTKE, BCKE  = calculate_KE(f)
-    aux = compute_rpe_density(f)
+    KE = calculate_KE(f)
 
-    APE = calculate_APE(aux)
-    RPE = calculate_RPE(aux)
+    Etimeseries = compute_energy_timeseries(f)
 
-    return (; KE, BTKE, BCKE, APE, RPE)
-end
+    E = FieldTimeSeries{Face, Center, Center}(f[:u].grid, f[:u].times[iterations])
 
-function compute_zonal_mean(f::Dict)
-    ū = FieldTimeSeries{Nothing, Center, Center}(f[:u].grid, f[:u].times)
-    b̄ = FieldTimeSeries{Nothing, Center, Center}(f[:u].grid, f[:u].times)
-
-    v̄ = FieldTimeSeries{Nothing, Face, Center}(f[:u].grid, f[:u].times)
-    w̄ = FieldTimeSeries{Nothing, Center, Face}(f[:u].grid, f[:u].times)
-
-    for time in 1:length(f[:u].times)
-        set!(ū[time], mean(f[:u][time], dims = 1))
-        set!(v̄[time], mean(f[:v][time], dims = 1))
-        set!(w̄[time], mean(f[:w][time], dims = 1))
-        set!(b̄[time], mean(f[:b][time], dims = 1))
+    for (i, t) in enumerate(iterations)
+        set!(E[i], KineticEnergyOperation(f, t))
     end
 
-    return (; ū, v̄, w̄, b̄)
+    KEavg  = Diagnostics.time_average(E)
+    EKE    = Diagnostics.propagate(E, KEavg, func = (e, ē) -> e - ē)
+    EKEavg = Diagnostics.time_average(EKE)
+
+    return (; KE, EKEavg, Etimeseries)
 end
 
-function save_contours(trailing_character = "_weaker", file_prefix = generate_names())
+function compute_energy_timeseries(f)
+    ū = propagate(f[:u]; func = x -> mean(x, dims = 1))
+    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1))
+    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1))
 
-    @show file_prefix
-    filenames = add_trailing_characters.(file_prefix, trailing_character)
-    filenames = add_trailing_name.(filenames)
+    u′ = propagate(f[:u], ū; func = (x, X) -> x - X)
+    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X)
+    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X)
 
-    enstrophy  = Dict()
-    buoyancy   = Dict()
-    yzbuoyancy = Dict()
-    vorticity  = Dict()
-    energy     = Dict()
-    referenpe  = Dict()
+    MEKE = propagate(ū , v̄ ; func = (u, v) -> mean(0.5 * (u^2 + v^2)))
+    EKE  = propagate(u′, v′; func = (u, v) -> mean(0.5 * (u^2 + v^2)))
+    MAPE = propagate(b̄     ; func =  B     -> mean(0.5 * B^2 / StratificationOperation(B)))
+    EAPE = propagate(b′, b̄ ; func = (b, B) -> mean(0.5 * b^2 / StratificationOperation(B)))
 
-    for (prefix, filename) in zip(file_prefix, filenames)
-        if isfile(filename)
+    return (; MEKE, EKE, MAPE, EAPE)
+end
 
-            @info "doing file " filename
-            fields = all_fieldtimeseries(filename; arch = CPU())
+function compute_zonal_mean(f::Dict, iterations)
+    ū = time_average(f[:u], iterations)
+    v̄ = time_average(f[:v], iterations)
+    w̄ = time_average(f[:w], iterations)
+    b̄ = time_average(f[:b], iterations)
 
-            ze = calculate_z★_diagnostics(fields[:b], 400)
-            ρ  = DensityOperation(fields[:b][400])
-            εe = compute!(Field(ze * ρ))
+    U = mean(ū, dims = 1) 
+    V = mean(v̄, dims = 1)
+    W = mean(w̄, dims = 1)
+    B = mean(b̄, dims = 1)
+
+    B★ = mean(B, dims = 2)
     
-            GC.gc()
-            ζ  = compute!(Field(VerticalVorticityOperation(fields, 400)))
-            ζ² = compute!(Field(ζ^2))
-
-            B = compute!(Field(Average(fields[:b][400], dims = 1)))
-
-            yzbuoyancy[String(prefix)] = (interior(B, 1, :, :), )
-            KE = compute!(Field(KineticEnergyOperation(fields, 400)))
-
-            enstrophy[Symbol(prefix)] = (interior(ζ², :, :, 25), interior(ζ², :, :, 50))
-            vorticity[Symbol(prefix)] = (interior(ζ, :, :, 25), interior(ζ, :, :, 50))
-            buoyancy[Symbol(prefix)]  = (interior(fields[:b][400], :, :, 25), interior(fields[:b][400], :, :, 50))
-            energy[Symbol(prefix)]    = (interior(KE, :, :, 25), interior(KE, :, :, 50))
-            referenpe[Symbol(prefix)] = (interior(εe, :, :, 25), interior(εe, :, :, 50))
-        end
-    end
-
-    write_file!("contours" * trailing_character * ".jld2", "enstrophy",   enstrophy )
-    write_file!("contours" * trailing_character * ".jld2", "vorticity",   vorticity )
-    write_file!("contours" * trailing_character * ".jld2", "buoyancy",    buoyancy  )    
-    write_file!("contours" * trailing_character * ".jld2", "yzbuoyancy2",  yzbuoyancy)
-    write_file!("contours" * trailing_character * ".jld2", "energy",      energy    )
-    write_file!("contours" * trailing_character * ".jld2", "referencepe", referenpe )
+    return (; U, V, W, B, B★, ū, v̄, w̄, b̄)
 end
 
-function calculate_fluxes(var)
+function compute_variances(f::Dict, fm, iterations)
+    u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X)
+    v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X)
+    w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X)
+    b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X)
+    
+    u′² = time_average(propagate(u′; func = x -> x^2), iterations)
+    v′² = time_average(propagate(v′; func = x -> x^2), iterations)
+    w′² = time_average(propagate(w′; func = x -> x^2), iterations)
+    b′² = time_average(propagate(b′; func = x -> x^2), iterations)
 
-    fluxes = []        
-    vol = VolumeField(var[:u].grid)
-    mean_vol = mean(interior(vol))
+    u′v′ = time_average(propagate(u′, v′; func = (x, y) -> x * y), iterations)
+    u′w′ = time_average(propagate(u′, w′; func = (x, y) -> x * y), iterations)
+    v′w′ = time_average(propagate(v′, w′; func = (x, y) -> x * y), iterations)
 
-    for t in 1:length(var[:u].times)
-        @info "doing time $t"
-        b  = var[:b][t]
-        w  = var[:w][t]        
-        v  = var[:v][t]
-        WB = mean(w * b, dims = 1)
-        VB = mean(v * b, dims = 1)
+    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
+    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
+    w′b′ = time_average(propagate(w′, b′; func = (x, y) -> x * y), iterations)
+    
+    return (; u′², v′², w′², b′², u′v′, u′w′, v′w′, u′b′, v′b′, w′b′)
+end
 
-        push!(fluxes, (; wb = mean(WB * vol)[1, 1, 1] / mean_vol, vb = mean(VB * vol)[1, 1, 1] / mean_vol))
-    end
+function compute_instability(fields, fm, iterations)
 
-    return fluxes
+    b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X)
+    u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X)
+    v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X)
+
+    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
+    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
+
+    return (; u′b′, v′b′)
 end
 
 function calculate_diagnostics(trailing_character = "_weaker", file_prefix = generate_names())
 
+    iter = [5, 14, 19, 2]
+    file_prefix = file_prefix[iter]
+    
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
 
-    energies    = Dict()
-    vardiss     = Dict()
-    spectras    = Dict()
-    enstrophies = Dict()
-    stratif     = Dict()
-    budgetB     = Dict()
-    # fluxes      = Dict()
+    postprocess = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
-        if isfile(filename)
+        if isfile(filename) && !(prefix == "qgleith" && trailing_character == "_eight_new")
 
             @info "doing file " filename
             fields = all_fieldtimeseries(filename; arch = CPU())
-            
-            spectras[Symbol(prefix)] = []
 
             GC.gc()
-            energy    = compute_energy_diagnostics(fields)
-            budget    = calculate_b_budget(fields)
+            energy    = compute_energy_diagnostics(fields, 50:200)
+            GC.gc()
             enstrophy = calculate_Ω(fields)
+            GC.gc()
             N²        = calculate_N²(fields)
-            # fluxe     = calculate_fluxes(fields)
-            for range in (45:55, 95:105, 145:155, 190:200)
-                if length(fields[:u].times) >= range[end]
-                    spectra = compute_spectra(fields, range)
-                    push!(spectras[Symbol(prefix)], spectra)
-                end
-            end
-            energies[Symbol(prefix)]    = energy
-            enstrophies[Symbol(prefix)] = enstrophy
-            stratif[Symbol(prefix)]     = N²
-            budgetB[Symbol(prefix)]     = budget
-            # fluxes[Symbol(prefix)]      = fluxe
+            GC.gc()
+            spectra   = compute_spectra(fields, 50:200)
+            GC.gc()
+            averages  = compute_zonal_mean(fields, 50:200)
+            GC.gc()
+            variance  = compute_variances(fields, averages, 50:200)
+            GC.gc()
+            instab    = compute_instability(fields, averages, 50:200)
+            GC.gc()
+
+            postprocess[:energies]  = energy
+            postprocess[:enstrophy] = enstrophy
+            postprocess[:stratif]   = N²
+            postprocess[:spectra]   = spectra
+            postprocess[:mean]      = averages
+            postprocess[:variance]  = variance
+            postprocess[:instab]    = instab
+
+            write_file!(prefix * trailing_character * "_postprocess.jld2", postprocess)
         end
     end
 
-    write_file!("enstrophies" * trailing_character * ".jld2", enstrophies)
-    write_file!("stratif" *     trailing_character * ".jld2", stratif)
-    write_file!("energies" *    trailing_character * ".jld2", energies)
-    write_file!("vardiss" *     trailing_character * ".jld2", vardiss) 
-    write_file!("budgetB" *     trailing_character * ".jld2", budgetB)
-    write_file!("spectra" *     trailing_character * ".jld2", spectras)
-    # write_file!("fluxes" *     trailing_character * ".jld2", fluxes)
-
     return nothing
+end
+
+# In case we want to postprocess on the GPU we need to save on CPU
+using Oceananigans.Fields: location, AbstractField
+using Oceananigans.Grids:  on_architecture
+
+move_on_cpu(array::CuArray) = Array(array)
+move_on_cpu(array) = array
+
+move_on_cpu(fields::NamedTuple) = 
+    NamedTuple{propertynames(fields)}(map(move_on_cpu, fields))
+
+move_on_cpu(fields::Tuple) = map(move_on_cpu, fields)
+move_on_cpu(field::AbstractField) = move_on_cpu(field, architecuture(field))
+
+move_on_cpu(field, ::CPU) = field
+
+function move_on_cpu(field, ::GPU)
+    grid = on_architecture(CPU(), field.grid)
+    cpu_field = Field{location(field)...}(grid)
+    set!(cpu_field, field)
+    return cpu_field
 end

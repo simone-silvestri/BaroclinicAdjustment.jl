@@ -36,9 +36,9 @@ end
 
 function surface_videos(trailing_character = "_weaker", file_prefix = generate_names())
 
-    @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
+    @show filenames
 
     iter = Observable(1)
 

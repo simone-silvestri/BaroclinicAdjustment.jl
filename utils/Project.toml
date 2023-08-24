@@ -4,8 +4,10 @@ version = "1.0.0-DEV"
 
 [deps]
 BaroclinicAdjustment = "2ba04c38-97e8-4ac2-88ab-325be645c0d7"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
