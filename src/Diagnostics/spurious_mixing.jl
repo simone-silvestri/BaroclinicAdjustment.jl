@@ -20,6 +20,21 @@ function calculate_z★_diagnostics(b::FieldTimeSeries)
     return z★
 end
 
+function calculate_z★_diagnostics(b::FieldTimeSeries, i)
+
+    times = b.times
+
+    vol = VolumeField(b.grid)
+    z★  = similar(b[1])
+
+    total_area = sum(AreaField(b.grid))
+
+    @info "time $i of $(length(times))"
+    calculate_z★!(z★, b[i], vol, total_area)
+        
+    return z★
+end
+
 function calculate_z★!(z★::Field, b::Field, vol, total_area)
     grid = b.grid
     arch = architecture(grid)
