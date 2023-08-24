@@ -46,12 +46,9 @@ function calculate_APE(st)
     return APE
 end
 
-function calculate_KE(var; compute_projection = true)
+function calculate_KE(var)
     KE  = Float64[]
     
-    BTKE = []
-    BCKE = []
-
     vol = VolumeField(var[:u].grid)
 
     @info "computing kinetic energy..."
@@ -63,21 +60,9 @@ function calculate_KE(var; compute_projection = true)
         ke = compute!(Field(@at (Center, Center, Center) (u^2 + v^2) * vol))
 
         push!(KE, 0.5 * sum(interior(ke)))
-
-        if compute_projection && t == length(var[:u].times)
-            btke = sum(interior(ke),         dims = 3) 
-            bcke = sum(interior(ke) .- btke, dims = 3)
-    
-            push!(BTKE, btke)
-            push!(BCKE, bcke)
-        end
     end
 
-    if compute_projection
-        return KE, BTKE, BCKE
-    else
-        return KE
-    end
+    return KE
 end
 
 function calculate_Ω(var)
@@ -113,38 +98,12 @@ function calculate_N²(var)
     return N²avg
 end
 
-using Oceananigans.BoundaryConditions
+function calculate_N²_avg(fields, iterations)
+    B  = time_average(fields[:b], iterations)
+    B  = mean(B, dims = 1)
+    N² = compute!(Field(∂z(B)))
 
-function calculate_b_budget(var)    
-    dissipation     = Float64[]
-    time_derivative = Float64[]
-    
-    vol = VolumeField(var[:u].grid)
-    fill_halo_regions!(vol)
-
-    b1  = CenterField(var[:b].grid)
-    b2  = CenterField(var[:b].grid)
-
-    @info "computing buoyancy budget..."
-    for t in 1:2:length(var[:b].times)-1
-        @info "doing time $t"
-        dt    = (var[:b].times[t+1] - var[:b].times[t]) 
-
-        set!(b1, var[:b][t])
-        set!(b2, var[:b][t+1])
-
-        fill_halo_regions!((b1, b2))
-        diss1 = compute!(Field(∂z(b1)^2 * vol))
-        diss2 = compute!(Field(∂z(b2)^2 * vol))
-
-        b12 = sum(interior(compute!(Field(b1^2 * vol))))
-        b22 = sum(interior(compute!(Field(b2^2 * vol))))
-        db2dt = (b22 - b12) / dt
-        push!(dissipation, 1e-5 * (sum(interior(diss1)) + sum(interior(diss2))) / 2)
-        push!(time_derivative,     db2dt)
-    end
-
-    return (; dissipation, time_derivative)
+    return mean(N², dims = 2)
 end
 
 function calculate_deformation_radius(var)    

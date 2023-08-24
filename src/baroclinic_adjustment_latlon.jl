@@ -1,14 +1,52 @@
+using Oceananigans.Coriolis: hack_sind
+
+@inline function buoyancy_forcing(i, j, k, grid, clock, fields, p)
+    @inbounds B  = p.B[1, j, k]
+    @inbounds B★ = p.B★[1, j, k]
+    return 1 / p.τ * (B★ - B)
+end
+
+@inline function u_velocity_forcing(i, j, k, grid, clock, fields, p)
+    @inbounds U  = p.U[1, j, k]
+    @inbounds U★ = p.U★[1, j, k]
+    return 1 / p.τ * (U★ - U)
+end
+
+@inline function v_velocity_forcing(i, j, k, grid, clock, fields, p)
+    @inbounds V = p.V[1, j, k]
+    return - V / p.τ 
+end
+
+@inline transform(φ, p) = (p.φinit + φ) / p.Lφ * 2π - π/2
+
+@inline function bᵢ(λ, φ, z, p) 
+    x = transform(φ, p)
+    b = ifelse(x < 0, 0, ifelse(x > π, 1, 1 - (π - x - sin(π - x) * cos(π - x)) / π))
+    return p.N² * z + p.Δb * b
+end
+
+@inline function uᵢ(λ, φ, z, p) 
+    f   = 2 * p.coriolis.rotation_rate * hack_sind(φ)
+    x   = transform(φ, p)
+    ∂b∂x = p.Δb * ifelse(x < 0, 0, ifelse(x > π, 0, (sin(x)^2 - cos(x)^2 + 1) / π))
+    ∂x∂φ = 1 / p.Lφ * 2π
+    ∂φ∂y = 1 / p.R * 180 / π
+    return - 1 / f * (p.Lz + z) * ∂b∂x * ∂x∂φ * ∂φ∂y
+end
+
 function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; arch = GPU(), 
                                                    horizontal_closure = nothing,
                                                    momentum_advection = VectorInvariant(), 
+                                                   tracer_advection = WENO(FT),
+                                                   buoyancy_forcing_timescale = nothing,
                                                    background_νz = 1e-4,
-                                                   φ₀ = - 50)
+                                                   φ₀ = - 50,
+                                                   stop_time = 200days)
     
     # Domain
     Lz = 1kilometers     # depth [m]
     Ny = Base.Int(20 / resolution)
     Nz = 50
-    stop_time = 200days
     Δt = 2.5minutes
 
     grid = LatitudeLongitudeGrid(arch, FT;
@@ -19,49 +57,58 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                 z = (-Lz, 0),
                                 halo = (6, 6, 6))
 
-    vertical_closure = ConvectiveAdjustmentVerticalDiffusivity(FT; convective_κz = 0.1,
-                                                                   convective_νz = 0.0,
-                                                                   background_κz = 1e-5,
-                                                                   background_νz)
+    vertical_closure = VerticalScalarDiffusivity(FT; κ = 1e-5, ν = background_νz)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
-    gravity = FT(Oceananigans.BuoyancyModels.g_Earth)
-    max_Δt  = 20minutes
-
-    substeps = barotropic_substeps(max_Δt, grid, gravity)
-
-    @inline ramp(λ, y, Δ) = min(max(0, (- φ₀ + y) / Δ + 1/2), 1)
-
     N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-    Δy = 1.0 # degree
-    Δb = 0.006
+    Δb = 0.005 # [m/s²] buoyancy difference
+
+    coriolis = HydrostaticSphericalCoriolis(FT)
 
     # Parameters
-    param = (; N², Δy, Δb)
+    param = (; N², Δb, Lz, Lφ = grid.Ly, 
+               φinit = - (φ₀-10),
+               τ  = buoyancy_forcing_timescale, 
+               B  = Field{Nothing, Center, Center}(grid), 
+               U  = Field{Nothing, Center, Center}(grid), 
+               V  = Field{Nothing, Face,   Center}(grid),
+               U★ = Field{Nothing, Center, Center}(grid),
+               B★ = Field{Nothing, Center, Center}(grid),
+               coriolis,
+               R = grid.radius)
 
-    @inline bᵢ(x, y, z, p) = p.N² * z + p.Δb * ramp(x, y, p.Δy) 
-
-    free_surface = SplitExplicitFreeSurface(FT; substeps)
-    @info "running with substeps $substeps"
+    free_surface = SplitExplicitFreeSurface(FT; grid, cfl = 0.75)
     @info "Building a model..."
 
-    model = HydrostaticFreeSurfaceModel(; grid,
-                                        coriolis = HydrostaticSphericalCoriolis(FT),
-                                        buoyancy = BuoyancyTracer(),
-                                        closure = closures,
-                                        tracers = :b,
-                                        momentum_advection,
-                                        tracer_advection = WENO(FT),
-                                        free_surface)
+    if !isnothing(buoyancy_forcing_timescale)
+        set!(param.U★, (y, z) -> uᵢ(1, y, z, param))
+        set!(param.B★, (y, z) -> bᵢ(1, y, z, param))
+        bf = Forcing(  buoyancy_forcing; discrete_form=true, parameters=param)
+        uf = Forcing(u_velocity_forcing; discrete_form=true, parameters=param)
+        vf = Forcing(v_velocity_forcing; discrete_form=true, parameters=param)
+        forcing = (; b = bf, u = uf, v = vf)
+    else 
+        forcing = NamedTuple()
+    end
 
-    @info "Built $model."
+    model = HydrostaticFreeSurfaceModel(; grid,
+                                          coriolis,
+                                          buoyancy = BuoyancyTracer(),
+                                          closure = closures,
+                                          tracers = :b,
+                                          momentum_advection,
+                                          tracer_advection,
+                                          forcing,
+                                          free_surface)
 
     ϵb = 1e-2 * Δb # noise amplitude
     Random.seed!(1234)
-    bᵢᵣ(x, y, z) = bᵢ(x, y, z, param) + ϵb * randn()
 
-    set!(model, b=bᵢᵣ)
+    bᵢᵣ(x, y, z) = bᵢ(x, y, z, param) + ϵb * randn()
+    uᵢᵣ(x, y, z) = uᵢ(x, y, z, param)
+
+    set!(model, b=bᵢᵣ, u=uᵢᵣ)
 
     #####
     ##### Simulation building
@@ -70,8 +117,15 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt, min_Δt = 15)
+    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt = 20minutes, min_Δt = 15)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+
+    function update_mean_values(sim)
+        sim.model.forcing.b.parameters.B .= mean(sim.model.tracers.b,    dims = 1)
+        sim.model.forcing.u.parameters.U .= mean(sim.model.velocities.u, dims = 1)
+        sim.model.forcing.v.parameters.V .= mean(sim.model.velocities.v, dims = 1)
+        return nothing
+    end
 
     # add progress callback
     wall_clock = [time_ns()]
@@ -92,11 +146,10 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
         return nothing
     end
 
-    simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+    simulation.callbacks[:print_progress]     = Callback(print_progress,     IterationInterval(20))
+    simulation.callbacks[:update_mean_values] = Callback(update_mean_values, IterationInterval(10))
 
     reduced_outputs!(simulation, filename)
 
-    run!(simulation)
-
-    return nothing
+    return simulation
 end

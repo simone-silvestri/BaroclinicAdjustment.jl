@@ -93,14 +93,12 @@ function reduce_output_size!(old_file_name, new_file_name; limit_to = 20, variab
     jldsave(new_file_name, vars = var_dict)
 end
 
-function add_kinetic_energy_from_timeseries!(fields::Dict, iterations = 1:length(fields[:u2].times))
+function add_kinetic_energy_from_timeseries!(fields::Dict, iterations = 1:length(fields[:u].times))
 
-    E = FieldTimeSeries{Center, Center, Center}(fields[:u].grid, fields[:u].times[iterations])
+    E = FieldTimeSeries{Face, Center, Center}(fields[:u].grid, fields[:u].times[iterations])
 
     for (i, t) in enumerate(iterations)
-        u2 = fields[:u2][t]
-        v2 = fields[:v2][t]
-        set!(E[i], @at (Center, Center, Center) 0.5 * (u2 + v2))
+        set!(E[i], KineticEnergyOperation(fields, i))
     end
 
     fields[:E] = E
@@ -129,14 +127,6 @@ function add_kinetic_energy_and_vorticity_timeseries!(fields::Dict)
     fields[:ζ] = ζ
 
     return nothing
-end
-
-function add_kinetic_energy_and_vorticity_timeseries!(fields::NamedTuple)
-
-    ζ = VerticalVorticityField(fields)
-    E = KineticEnergyField(fields)
-
-    return merge(fields, (; ζ, E))
 end
 
 function kinetic_energy(u::FieldTimeSeries, v::FieldTimeSeries)
@@ -210,7 +200,7 @@ function time_average(field::FieldTimeSeries, iterations = 1:length(field.times)
     fill!(avg, 0)
 
     for t in iterations
-        avg .+= field[t] ./ length(field.times)
+        avg .+= field[t] ./ length(iterations)
     end
 
     return avg

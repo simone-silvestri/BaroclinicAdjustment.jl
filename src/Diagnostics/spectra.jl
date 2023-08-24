@@ -1,9 +1,18 @@
 using FFTW
+using Oceananigans.Grids: φnode
 
 struct Spectrum{S, F}
     spec :: S
     freq :: F
 end
+
+import Base
+
+Base.:(+)(s::Spectrum, t::Spectrum) = Spectrum(s.spec .+ t.spec, s.freq)
+Base.:(*)(s::Spectrum, t::Spectrum) = Spectrum(s.spec .* t.spec, s.freq)
+Base.:(/)(s::Spectrum, t::Int)      = Spectrum(s.spec ./ t, s.freq)
+
+Base.real(s::Spectrum) = Spectrum(real.(s.spec), s.freq)
 
 @inline onefunc(args...)  = 1.0
 @inline hann_window(n, N) = sin(π * n / N)^2 
@@ -72,24 +81,36 @@ function power_spectrum_1d_x(var, x; windowing = onefunc)
     return Spectrum(spectra, freqs)
 end
 
-@kernel function _compute_zonal_spectra!(Uspec, Vspec, Ωspec, WBspec, grid, u, v, ζ, w, b)
+@kernel function _compute_zonal_spectra!(Uspec, Vspec, Bspec, Ωspec, WBspec, STspec, PVspec, grid, u, v, ζ, w, b, st, pv)
     j, k = @index(Global, NTuple)
 
     Nx = size(grid, 1)
 
-    Uspec[j, k]  = power_spectrum_1d_x(interior(u, :, j, k), grid.λᶠᵃᵃ[1:Nx])
-    Vspec[j, k]  = power_spectrum_1d_x(interior(v, :, j, k), grid.λᶜᵃᵃ[1:Nx])
-    Ωspec[j, k]  = power_spectrum_1d_x(interior(ζ, :, j, k), grid.λᶠᵃᵃ[1:Nx])
-    WBspec[j, k] = power_cospectrum_1d(interior(w, :, j, k), interior(b, :, j, k), grid.λᶜᵃᵃ[1:Nx])
+    Uspec[j, k]  = power_spectrum_1d_x(Array(interior(u,  :, j, k)), Array(grid.λᶠᵃᵃ.parent)[1:Nx])
+    Vspec[j, k]  = power_spectrum_1d_x(Array(interior(v,  :, j, k)), Array(grid.λᶜᵃᵃ.parent)[1:Nx])
+    Bspec[j, k]  = power_spectrum_1d_x(Array(interior(b,  :, j, k)), Array(grid.λᶜᵃᵃ.parent)[1:Nx])
+    Ωspec[j, k]  = power_spectrum_1d_x(Array(interior(ζ,  :, j, k)), Array(grid.λᶠᵃᵃ.parent)[1:Nx])
+    STspec[j, k] = power_spectrum_1d_x(Array(interior(st, :, j, k)), Array(grid.λᶠᵃᵃ.parent)[1:Nx])
+    PVspec[j, k] = power_spectrum_1d_x(Array(interior(pv, :, j, k)), Array(grid.λᶠᵃᵃ.parent)[1:Nx])
+    WBspec[j, k] = power_cospectrum_1d(Array(interior(w,  :, j, k)), Array(interior(b, :, j, k)), Array(grid.λᶜᵃᵃ.parent)[1:Nx])
 end
 
-@kernel function _update_spectra!(Ufinal, Vfinal, Ωfinal, WBfinal, Uspec, Vspec, Ωspec, WBspec)
+@kernel function _update_spectra!(Ufinal, Vfinal, Bfinal, Ωfinal, WBfinal, STfinal, PVfinal, Uspec, Vspec, Bspec, Ωspec, WBspec, STspec, PVspec)
     j, k = @index(Global, NTuple)
 
     Ufinal[j, k].spec  .+= Uspec[j, k].spec
     Vfinal[j, k].spec  .+= Vspec[j, k].spec
+    Bfinal[j, k].spec  .+= Bspec[j, k].spec
     Ωfinal[j, k].spec  .+= Ωspec[j, k].spec
     WBfinal[j, k].spec .+= WBspec[j, k].spec
+    STfinal[j, k].spec .+= STspec[j, k].spec
+    PVfinal[j, k].spec .+= PVspec[j, k].spec
+end
+
+@inline function _stretching_term(i, j, k, grid, ∂zb, N²)
+    φ = φnode(i, j, k, grid, Center(), Center(), Face())
+    f = 2 * 7.292115e-5 * sind(φ)
+    return ∂zb[i, j, k] * f / max(1e-10, N²[i, j, k])
 end
 
 function compute_spectra(f::Dict, time)
@@ -99,26 +120,42 @@ function compute_spectra(f::Dict, time)
 
     U  = Array{Spectrum}(undef, Ny, Nz)
     V  = Array{Spectrum}(undef, Ny, Nz)
+    B  = Array{Spectrum}(undef, Ny, Nz)
     Ω  = Array{Spectrum}(undef, Ny, Nz)
     WB = Array{Spectrum}(undef, Ny, Nz)
+    ST = Array{Spectrum}(undef, Ny, Nz)
+    PV = Array{Spectrum}(undef, Ny, Nz)
 
     Uspec  = Array{Spectrum}(undef, Ny, Nz)
     Vspec  = Array{Spectrum}(undef, Ny, Nz)
+    Bspec  = Array{Spectrum}(undef, Ny, Nz)
     Ωspec  = Array{Spectrum}(undef, Ny, Nz)
     WBspec = Array{Spectrum}(undef, Ny, Nz)
+    STspec = Array{Spectrum}(undef, Ny, Nz)
+    PVspec = Array{Spectrum}(undef, Ny, Nz)
 
     u = Field{Face, Center, Center}(grid)
     v = Field{Center, Face, Center}(grid)
 
+    b = Field{Center, Center, Center}(grid)
     set!(u, f[:u][time[1]])
     set!(v, f[:v][time[1]])
-    fill_halo_regions!((u, v))
+    set!(b, f[:b][time[1]])
+    fill_halo_regions!((u, v, b))
 
     w, b = f[:w][time[1]], f[:b][time[1]]
 
     ζ = compute!(Field(VerticalVorticityOperation((; u, v))))
+
+    ∂zb = compute!(Field(∂z(b)))
+    N²  = compute!(Field(Average(∂zb, dims = 1)))
+
+    st_op = KernelFunctionOperation{Center, Center, Face}(_stretching_term, grid, ∂zb, N²)
+    st    = compute!(Field(st_op))
+    pv    = compute!(Field(st + ζ))
+
     Nx, Ny, Nz = size(grid)
-    launch!(CPU(), grid, (Ny, Nz), _compute_zonal_spectra!, U, V, Ω, WB, grid, u, v, ζ, w, b)
+    launch!(CPU(), grid, (Ny, Nz), _compute_zonal_spectra!, U, V, B, Ω, WB, ST, PV, grid, u, v, ζ, w, b, st, pv)
 
     @show length(time)
     if length(time) > 1
@@ -131,10 +168,12 @@ function compute_spectra(f::Dict, time)
 
             w, b = f[:w][t], f[:b][t]
 
-            launch!(CPU(), grid, (Ny, Nz), _compute_zonal_spectra!, Uspec, Vspec, Ωspec, WBspec, grid, u, v, ζ, w, b)
-            launch!(CPU(), grid, (Ny, Nz), _update_spectra!, U, V, Ω, WB, Uspec, Vspec, Ωspec, WBspec)
+            launch!(CPU(), grid, (Ny, Nz), _compute_zonal_spectra!, Uspec, Vspec, Bspec, Ωspec, WBspec, STspec, PVspec, grid, u, v, ζ, w, b, st, pv)
+            launch!(CPU(), grid, (Ny, Nz), _update_spectra!, U, V, B, Ω, WB, ST, PV, Uspec, Vspec, Bspec, Ωspec, WBspec, STspec, PVspec)
         end
     end
+
+    @info "finished"
     
-    return (; U, V, Ω, WB)
+    return (; U, V, B, Ω, WB, ST, PV)
 end

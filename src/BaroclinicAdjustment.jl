@@ -22,7 +22,7 @@ include("horizontal_visc.jl")
 include("qg_leith_viscosity.jl")
 include("outputs.jl")
 
-function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.5)
+function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.75)
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)
     
     Δx = minimum_xspacing(grid)
