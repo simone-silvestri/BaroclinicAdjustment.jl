@@ -146,7 +146,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename) && !(prefix == "qgleith" && trailing_character == "_sixteen_new")
 	    
-            arch = CPU()
+            arch = GPU()
             @info "doing file " filename arch
             fields = all_fieldtimeseries(filename; arch)
 
@@ -166,13 +166,13 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             instab    = compute_instability(fields, averages, 50:200)
             GC.gc(true)
 
-	    postprocess[:energies]  = energy
-	    postprocess[:enstrophy] = enstrophy
-	    postprocess[:stratif]   = N²
-	    postprocess[:spectra]   = spectra
-	    postprocess[:mean]      = averages
-	    postprocess[:variance]  = variance
-	    postprocess[:instab]    = instab
+	    postprocess[:energies]  = move_on_cpu(energy)
+	    postprocess[:enstrophy] = move_on_cpu(enstrophy)
+	    postprocess[:stratif]   = move_on_cpu(N²)
+	    postprocess[:spectra]   = move_on_cpu(spectra)
+	    postprocess[:mean]      = move_on_cpu(averages)
+	    postprocess[:variance]  = move_on_cpu(variance)
+	    postprocess[:instab]    = move_on_cpu(instab)
 
             write_file!(prefix * trailing_character * "_postprocess.jld2", postprocess)
         end
@@ -192,11 +192,18 @@ move_on_cpu(fields::NamedTuple) =
     NamedTuple{propertynames(fields)}(map(move_on_cpu, fields))
 
 move_on_cpu(fields::Tuple) = map(move_on_cpu, fields)
-move_on_cpu(field::AbstractField) = move_on_cpu(field, architecture(field))
-
-move_on_cpu(fields::FieldTimeSeries) = propagate(fields; func = x -> move_on_cpu(x, architecture(x)))
-
+move_on_cpu(field::AbstractField)   = move_on_cpu(field, architecture(field))
+move_on_cpu(field::FieldTimeSeries) = move_on_cpu(field, architecture(field))
 move_on_cpu(field, ::CPU) = field
+
+function move_on_cpu(fields::FieldTimeSeries) 
+    grid = on_architecture(CPU(), fields.grid)
+    cpu_fields = FieldTimeSeries{location(fields)...}(grid, fields.times)
+    for i in 1:length(fields.times)
+       set!(cpu_fields[i], move_on_cpu(fields[i]))
+    end
+    return cpu_fields
+end
 
 function move_on_cpu(field, ::GPU)
     grid = on_architecture(CPU(), field.grid)
