@@ -1,3 +1,4 @@
+using Revise
 using Statistics: mean
 using Oceananigans
 using BaroclinicAdjustment
@@ -41,7 +42,9 @@ function compute_energy_diagnostics(f::Dict, iterations)
     end
 
     KEavg  = Diagnostics.time_average(E)
-    EKE    = Diagnostics.propagate(E, KEavg, func = (e, ē) -> e - ē)
+    CUDA.@allowscalar begin
+    	EKE    = Diagnostics.propagate(E, KEavg; func = (e, ē) -> e - ē)
+    end
     EKEavg = Diagnostics.time_average(EKE)
 
     return (; KE, EKEavg, Etimeseries)
@@ -81,35 +84,50 @@ function compute_zonal_mean(f::Dict, iterations)
 end
 
 function compute_variances(f::Dict, fm, iterations)
-    u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X)
-    v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X)
-    w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X)
-    b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X)
-    
+    CUDA.@allowscalar begin
+	u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X)
+        v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X)
+        w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X)
+        b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X)
+    end
     u′² = time_average(propagate(u′; func = x -> x^2), iterations)
+    GC.gc(true)
     v′² = time_average(propagate(v′; func = x -> x^2), iterations)
+    GC.gc(true)
     w′² = time_average(propagate(w′; func = x -> x^2), iterations)
+    GC.gc(true)
     b′² = time_average(propagate(b′; func = x -> x^2), iterations)
+    GC.gc(true)
 
     u′v′ = time_average(propagate(u′, v′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
     u′w′ = time_average(propagate(u′, w′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
     v′w′ = time_average(propagate(v′, w′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
 
     u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
     v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
     w′b′ = time_average(propagate(w′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
     
     return (; u′², v′², w′², b′², u′v′, u′w′, v′w′, u′b′, v′b′, w′b′)
 end
 
 function compute_instability(fields, fm, iterations)
-
-    b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X)
-    u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X)
-    v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X)
-
+ 
+    CUDA.@allowscalar begin
+       b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X)
+       u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X)
+       v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X)
+    end
+    
     u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
     v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
 
     return (; u′b′, v′b′)
 end
@@ -126,34 +144,35 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
     postprocess = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
-        if isfile(filename) && !(prefix == "qgleith" && trailing_character == "_eight_new")
+        if isfile(filename) && !(prefix == "qgleith" && trailing_character == "_sixteen_new")
+	    
+            arch = CPU()
+            @info "doing file " filename arch
+            fields = all_fieldtimeseries(filename; arch)
 
-            @info "doing file " filename
-            fields = all_fieldtimeseries(filename; arch = CPU())
-
-            GC.gc()
+            GC.gc(true)
             energy    = compute_energy_diagnostics(fields, 50:200)
-            GC.gc()
+            GC.gc(true)
             enstrophy = calculate_Ω(fields)
-            GC.gc()
+            GC.gc(true)
             N²        = calculate_N²(fields)
-            GC.gc()
+            GC.gc(true)
             spectra   = compute_spectra(fields, 50:200)
-            GC.gc()
+            GC.gc(true)
             averages  = compute_zonal_mean(fields, 50:200)
-            GC.gc()
+            GC.gc(true)
             variance  = compute_variances(fields, averages, 50:200)
-            GC.gc()
+            GC.gc(true)
             instab    = compute_instability(fields, averages, 50:200)
-            GC.gc()
+            GC.gc(true)
 
-            postprocess[:energies]  = energy
-            postprocess[:enstrophy] = enstrophy
-            postprocess[:stratif]   = N²
-            postprocess[:spectra]   = spectra
-            postprocess[:mean]      = averages
-            postprocess[:variance]  = variance
-            postprocess[:instab]    = instab
+	    postprocess[:energies]  = energy
+	    postprocess[:enstrophy] = enstrophy
+	    postprocess[:stratif]   = N²
+	    postprocess[:spectra]   = spectra
+	    postprocess[:mean]      = averages
+	    postprocess[:variance]  = variance
+	    postprocess[:instab]    = instab
 
             write_file!(prefix * trailing_character * "_postprocess.jld2", postprocess)
         end
@@ -164,7 +183,7 @@ end
 
 # In case we want to postprocess on the GPU we need to save on CPU
 using Oceananigans.Fields: location, AbstractField
-using Oceananigans.Grids:  on_architecture
+using Oceananigans.Grids: on_architecture, architecture
 
 move_on_cpu(array::CuArray) = Array(array)
 move_on_cpu(array) = array
@@ -173,7 +192,9 @@ move_on_cpu(fields::NamedTuple) =
     NamedTuple{propertynames(fields)}(map(move_on_cpu, fields))
 
 move_on_cpu(fields::Tuple) = map(move_on_cpu, fields)
-move_on_cpu(field::AbstractField) = move_on_cpu(field, architecuture(field))
+move_on_cpu(field::AbstractField) = move_on_cpu(field, architecture(field))
+
+move_on_cpu(fields::FieldTimeSeries) = propagate(fields; func = x -> move_on_cpu(x, architecture(x)))
 
 move_on_cpu(field, ::CPU) = field
 
