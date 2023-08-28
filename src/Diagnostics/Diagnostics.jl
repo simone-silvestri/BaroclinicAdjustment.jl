@@ -41,14 +41,17 @@ end
 set!(time_series::InMemoryFieldTimeSeries, f, index::Int) = set!(time_series[index], f)
 set!(time_series::OnDiskFieldTimeSeries, f::AbstractOperation, index::Int) = set!(time_series, compute!(Field(f)), index)
 
+transform_to_array(f::Number) = f
+transform_to_array(f::AbstractArray) = Array(parent(f))
+
 # When we set! a OnDiskFieldTimeSeries we automatically write down the memory path
-function set!(time_series::OnDiskFieldTimeSeries, f::AbstractArray, index::Int)
+function set!(time_series::OnDiskFieldTimeSeries, f, index::Int)
     path = time_series.data.path
     name = time_series.data.name
     jldopen(path, "a+") do file
         initialize_file!(file, name, time_series)
         maybe_write_property!(file, "timeseries/t/$index", time_series.times[index])
-        maybe_write_property!(file, "timeseries/$(name)/$(index)", Array(parent(f)))
+        maybe_write_property!(file, "timeseries/$(name)/$(index)", transform_to_array(f))
     end
 end
 
