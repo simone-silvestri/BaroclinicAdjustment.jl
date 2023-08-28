@@ -8,11 +8,12 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using KernelAbstractions: @kernel, @index 
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+using Oceananigans.Grids: architecture
 using Oceananigans.Fields: boundary_conditions, indices, location, total_size, offset_data
+using Oceananigans.OutputReaders: InMemoryFieldTimeSeries, OnDiskFieldTimeSeries
 
 import Oceananigans.Fields: set!
 import Oceananigans.OutputReaders: FieldTimeSeries
-using Oceananigans.OutputReaders: InMemoryFieldTimeSeries, OnDiskFieldTimeSeries
 
 function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
                                      indices = (:, :, :), 
@@ -31,6 +32,7 @@ end
 new_fieldtimeseries_data(FT, grid, loc, indices, Nt, path, name, ::OnDisk) = Oceananigans.OutputReaders.OnDiskData(path, name)
 
 function new_fieldtimeseries_data(FT, grid, loc, indices, Nt, path, name, ::InMemory)
+    arch = architecture(grid)
     space_size = total_size(grid, loc, indices)
     underlying_data = zeros(FT, arch, space_size..., Nt)
     return offset_data(underlying_data, grid, loc, indices)
