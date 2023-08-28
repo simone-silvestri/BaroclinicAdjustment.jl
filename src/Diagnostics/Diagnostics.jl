@@ -4,6 +4,7 @@ export all_fieldtimeseries, limit_timeseries!, propagate
 export VolumeField, AreaField, MetricField, KineticEnergyField, time_average
 
 using Oceananigans
+using Oceananigans.AbstractOperations: AbstractOperation
 using KernelAbstractions: @kernel, @index 
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
