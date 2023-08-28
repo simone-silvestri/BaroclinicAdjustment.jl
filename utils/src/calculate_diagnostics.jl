@@ -64,10 +64,10 @@ function compute_energy_timeseries(f)
     B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B)
     N² = propagate(B; func = B -> StratificationOperation(B))
 
-    MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
-    EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
-    MAPE = propagate(B̄ , N²; func = (B, N²) -> mean(0.5 * B^2 / N²))
-    EAPE = propagate(b′, N²; func = (b, N²) -> mean(0.5 * b^2 / N²))
+    MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)), path = "auxiliaries/energies.jld2", name = "MEKE")
+    EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)), path = "auxiliaries/energies.jld2", name = "EKE")
+    MAPE = propagate(B̄ , N²; func = (B, N²) -> mean(0.5 * B^2 / N²),    path = "auxiliaries/energies.jld2", name = "MAPE")
+    EAPE = propagate(b′, N²; func = (b, N²) -> mean(0.5 * b^2 / N²),    path = "auxiliaries/energies.jld2", name = "EAPE")
 
     return (; MEKE, EKE, MAPE, EAPE)
 end
@@ -96,28 +96,18 @@ function compute_variances(f::Dict, fm, iterations)
         b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "b′")
     end
     
-    u′² = time_average(propagate(u′; func = x -> x^2), iterations)
-    GC.gc(true)
-    v′² = time_average(propagate(v′; func = x -> x^2), iterations)
-    GC.gc(true)
-    w′² = time_average(propagate(w′; func = x -> x^2), iterations)
-    GC.gc(true)
-    b′² = time_average(propagate(b′; func = x -> x^2), iterations)
-    GC.gc(true)
+    u′² = time_average(propagate(u′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "u′²"), iterations)
+    v′² = time_average(propagate(v′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "v′²"), iterations)
+    w′² = time_average(propagate(w′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "w′²"), iterations)
+    b′² = time_average(propagate(b′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "b′²"), iterations)
 
-    u′v′ = time_average(propagate(u′, v′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
-    u′w′ = time_average(propagate(u′, w′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
-    v′w′ = time_average(propagate(v′, w′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
+    u′v′ = time_average(propagate(u′, v′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "u′v′"), iterations)
+    u′w′ = time_average(propagate(u′, w′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "u′w′"), iterations)
+    v′w′ = time_average(propagate(v′, w′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "v′w′"), iterations)
 
-    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
-    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
-    w′b′ = time_average(propagate(w′, b′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
+    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "u′b′"), iterations)
+    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "v′b′"), iterations)
+    w′b′ = time_average(propagate(w′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "w′b′"), iterations)
     
     return (; u′², v′², w′², b′², u′v′, u′w′, v′w′, u′b′, v′b′, w′b′)
 end
@@ -130,10 +120,8 @@ function compute_instability(fields, fm, iterations)
         v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = "auxiliaries/new_new_variance.jld2", name = "v′")
     end
     
-    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
-    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
-    GC.gc(true)
+    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_new_variance.jld2", name = "u′b′"), iterations)
+    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_new_variance.jld2", name = "v′b′"), iterations)
 
     return (; u′b′, v′b′)
 end
@@ -165,11 +153,6 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             @info "doing file " filename arch
             fields = all_fieldtimeseries(filename; arch)
 
-            run(`rm ./auxiliaries/mean.jld2`)
-            run(`rm ./auxiliaries/variance.jld2`)
-            run(`rm ./auxiliaries/new_variance.jld2`)
-            run(`rm ./auxiliaries/new_new_variance.jld2`)
-
             lim = min(200, length(fields[:u].times))
 
             GC.gc(true)
@@ -197,6 +180,11 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
 	        postprocess[:instab]    = move_on_cpu(instab)
 
             write_file!(prefix * trailing_character * "_postprocess.jld2", postprocess)
+
+            try run(`mv ./auxiliaries/mean.jld2 ./auxiliaries/$(file_prefix)_mean.jld2`); catch; end
+            try run(`mv ./auxiliaries/variance.jld2 ./auxiliaries/$(file_prefix)_variance.jld2`); catch; end
+            try run(`mv ./auxiliaries/new_variance.jld2 ./auxiliaries/$(file_prefix)_new_variance.jld2`); catch; end
+            try run(`mv ./auxiliaries/new_new_variance.jld2 ./auxiliaries/$(file_prefix)_new_new_variance.jld2`); catch; end
         end
     end
 
