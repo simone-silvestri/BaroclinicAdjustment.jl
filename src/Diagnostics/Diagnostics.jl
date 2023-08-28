@@ -8,7 +8,7 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using KernelAbstractions: @kernel, @index 
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Fields: boundary_conditions, indices, location
+using Oceananigans.Fields: boundary_conditions, indices, location, total_size, offset_data
 
 import Oceananigans.Fields: set!
 import Oceananigans.OutputReaders: FieldTimeSeries
