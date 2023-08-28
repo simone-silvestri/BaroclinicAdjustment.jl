@@ -67,6 +67,11 @@ function maybe_write_property!(file, property, data)
     end
 end
 
+import Oceananigans.AbstractOperations: restrict_index_for_interpolation
+
+restrict_index_for_interpolation(from_index, ::Type{Nothing}, ::Type{Face}) = from_index
+restrict_index_for_interpolation(from_index, ::Type{Nothing}, ::Type{Center}) = from_index
+
 function propagate(fields...; func, path = nothing, name = nothing)
 
     fields_op = Tuple(field[1] for field in fields)
