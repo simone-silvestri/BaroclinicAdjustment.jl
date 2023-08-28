@@ -156,20 +156,22 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             @info "doing file " filename arch
             fields = all_fieldtimeseries(filename; arch)
 
+            lim = min(200, length(fields[:u].times))
+
             GC.gc(true)
-            energy    = compute_energy_diagnostics(fields, 50:200)
+            energy    = compute_energy_diagnostics(fields, 50:lim)
             GC.gc(true)
             enstrophy = calculate_Ω(fields)
             GC.gc(true)
             N²        = calculate_N²(fields)
             GC.gc(true)
-            spectra   = compute_spectra(fields, 50:200)
+            spectra   = compute_spectra(fields, 50:lim)
             GC.gc(true)
-            averages  = compute_zonal_mean(fields, 50:200)
+            averages  = compute_zonal_mean(fields, 50:lim)
             GC.gc(true)
-            variance  = compute_variances(fields, averages, 50:200)
+            variance  = compute_variances(fields, averages, 50:lim)
             GC.gc(true)
-            instab    = compute_instability(fields, averages, 50:200)
+            instab    = compute_instability(fields, averages, 50:lim)
             GC.gc(true)
 
 	        postprocess[:energies]  = move_on_cpu(energy)
