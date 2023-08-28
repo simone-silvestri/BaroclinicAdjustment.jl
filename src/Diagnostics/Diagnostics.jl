@@ -76,7 +76,7 @@ function propagate(fields...; func, path = nothing, name = nothing)
         field_output = FieldTimeSeries{location(operation)...}(fields[1].grid, fields[1].times)
     end
 
-    set!(field_output[1], operation)
+    set!(field_output, operation, 1)
 
     for i in 2:length(field_output.times)
         @info "propagating on index $i"
