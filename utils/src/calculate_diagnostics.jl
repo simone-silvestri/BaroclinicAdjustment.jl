@@ -41,9 +41,9 @@ function compute_energy_diagnostics(f::Dict, iterations)
         set!(E[i], KineticEnergyOperation(f, t))
     end
 
-    KEavg  = Diagnostics.time_average(E)
+    KEavg = Diagnostics.time_average(E)
     CUDA.@allowscalar begin
-    	EKE    = Diagnostics.propagate(E, KEavg; func = (e, ē) -> e - ē)
+    	EKE = Diagnostics.propagate(E, KEavg; func = (e, ē) -> e - ē, path = "auxiliaries/energies.jld2", name = "old_EKE")
     end
     EKEavg = Diagnostics.time_average(EKE)
 
