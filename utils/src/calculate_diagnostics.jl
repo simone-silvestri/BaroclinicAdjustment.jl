@@ -61,8 +61,8 @@ function compute_energy_timeseries(f)
 
     B = propagate(f[:b]; func = x -> mean(x, dims = 2))
 
-    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B)
-    N² = propagate(B; func = B -> StratificationOperation(B))
+    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B, path = "auxiliaries/energies.jld2", name = "B̄")
+    N² = propagate(B; func = B -> StratificationOperation(B), path = "auxiliaries/energies.jld2", name = "N²")
 
     MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)), path = "auxiliaries/energies.jld2", name = "MEKE")
     EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)), path = "auxiliaries/energies.jld2", name = "EKE")
@@ -183,6 +183,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
 
             try run(`mv ./auxiliaries/mean.jld2 ./auxiliaries/$(file_prefix)_mean.jld2`); catch; end
             try run(`mv ./auxiliaries/variance.jld2 ./auxiliaries/$(file_prefix)_variance.jld2`); catch; end
+            try run(`mv ./auxiliaries/energies.jld2 ./auxiliaries/$(file_prefix)_energies.jld2`); catch; end
             try run(`mv ./auxiliaries/new_variance.jld2 ./auxiliaries/$(file_prefix)_new_variance.jld2`); catch; end
             try run(`mv ./auxiliaries/new_new_variance.jld2 ./auxiliaries/$(file_prefix)_new_new_variance.jld2`); catch; end
         end
