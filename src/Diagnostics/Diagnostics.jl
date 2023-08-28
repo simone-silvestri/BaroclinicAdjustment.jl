@@ -69,8 +69,11 @@ end
 
 import Oceananigans.AbstractOperations: restrict_index_for_interpolation
 
-restrict_index_for_interpolation(from_index, ::Type{Nothing}, ::Type{Face}) = from_index
+restrict_index_for_interpolation(from_index, ::Type{Nothing}, ::Type{Face})   = from_index
 restrict_index_for_interpolation(from_index, ::Type{Nothing}, ::Type{Center}) = from_index
+
+restrict_index_for_interpolation(from_index, ::Type{Face},   ::Type{Nothing}) = from_index
+restrict_index_for_interpolation(from_index, ::Type{Center}, ::Type{Nothing}) = from_index
 
 function propagate(fields...; func, path = nothing, name = nothing)
 
