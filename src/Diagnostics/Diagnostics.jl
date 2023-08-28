@@ -84,13 +84,11 @@ function propagate(fields...; func, path = nothing, name = nothing)
     fields_op = Tuple(field[1] for field in fields)
     operation = func(fields_op...)
 
-    Nx, Ny, Nz = size(operation) # take size of the first field which is the one that dominates
-
     if !(path isa Nothing) && !(name isa Nothing)
         field_output = FieldTimeSeries{location(operation)...}(fields[1].grid, fields[1].times; path, name, 
-							       backend = OnDisk(), indices = (1:Nx, 1:Ny, 1:Nz))
+							       backend = OnDisk(), indices = indices(operation))
     else    
-        field_output = FieldTimeSeries{location(operation)...}(fields[1].grid, fields[1].times)
+        field_output = FieldTimeSeries{location(operation)...}(fields[1].grid, fields[1].times, indices = indices(operation))
     end
 
     set!(field_output, operation, 1)
