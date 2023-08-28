@@ -48,18 +48,23 @@ function compute_energy_diagnostics(f::Dict, iterations)
 end
 
 function compute_energy_timeseries(f)
-    ū = propagate(f[:u]; func = x -> mean(x, dims = 1))
-    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1))
-    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1))
+    ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = "mean.jld2", name = "ū")
+    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = "mean.jld2", name = "v̄")
+    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = "mean.jld2", name = "b̄")
 
-    u′ = propagate(f[:u], ū; func = (x, X) -> x - X)
-    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X)
-    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X)
+    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = "variance.jld2", name = "u′")
+    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = "variance.jld2", name = "v′")
+    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = "variance.jld2", name = "b′")
 
-    MEKE = propagate(ū , v̄ ; func = (u, v) -> mean(0.5 * (u^2 + v^2)))
-    EKE  = propagate(u′, v′; func = (u, v) -> mean(0.5 * (u^2 + v^2)))
-    MAPE = propagate(b̄     ; func =  B     -> mean(0.5 * B^2 / StratificationOperation(B)))
-    EAPE = propagate(b′, b̄ ; func = (b, B) -> mean(0.5 * b^2 / StratificationOperation(B)))
+    B = propagate(f[:b]; func = x -> mean(x, dims = 2))
+
+    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B)
+    N² = propagate(B; func = B -> StratificationOperation(B))
+
+    MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
+    EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
+    MAPE = propagate(B̄ , N²; func = (B, N²) -> mean(0.5 * B^2 / N²))
+    EAPE = propagate(b′, N²; func = (b, N²) -> mean(0.5 * b^2 / N²))
 
     return (; MEKE, EKE, MAPE, EAPE)
 end
@@ -81,10 +86,10 @@ function compute_zonal_mean(f::Dict, iterations)
 end
 
 function compute_variances(f::Dict, fm, iterations)
-    u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X)
-    v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X)
-    w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X)
-    b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X)
+    u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X, path = "new_variance.jld2", name = "u′")
+    v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X, path = "new_variance.jld2", name = "v′")
+    w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X, path = "new_variance.jld2", name = "w′")
+    b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = "new_variance.jld2", name = "b′")
     
     u′² = time_average(propagate(u′; func = x -> x^2), iterations)
     v′² = time_average(propagate(v′; func = x -> x^2), iterations)
@@ -104,9 +109,9 @@ end
 
 function compute_instability(fields, fm, iterations)
 
-    b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X)
-    u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X)
-    v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X)
+    b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = "new_new_variance.jld2", name = "b′")
+    u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X, path = "new_new_variance.jld2", name = "u′")
+    v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = "new_new_variance.jld2", name = "v′")
 
     u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
     v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
@@ -126,13 +131,13 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
     postprocess = Dict()
 
     for (prefix, filename) in zip(file_prefix, filenames)
-        if isfile(filename) && !(prefix == "qgleith" && trailing_character == "_eight_new")
+        if isfile(filename) && (prefix != "leith")
 
             @info "doing file " filename
             fields = all_fieldtimeseries(filename; arch = CPU())
 
             GC.gc()
-            energy    = compute_energy_diagnostics(fields, 50:200)
+            # energy    = compute_energy_diagnostics(fields, 50:200)
             GC.gc()
             enstrophy = calculate_Ω(fields)
             GC.gc()
@@ -147,7 +152,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             instab    = compute_instability(fields, averages, 50:200)
             GC.gc()
 
-            postprocess[:energies]  = energy
+            # postprocess[:energies]  = energy
             postprocess[:enstrophy] = enstrophy
             postprocess[:stratif]   = N²
             postprocess[:spectra]   = spectra
