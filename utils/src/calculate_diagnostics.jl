@@ -51,13 +51,13 @@ function compute_energy_diagnostics(f::Dict, iterations)
 end
 
 function compute_energy_timeseries(f)
-    ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = "mean.jld2", name = "ū")
-    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = "mean.jld2", name = "v̄")
-    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = "mean.jld2", name = "b̄")
+    ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = "auxiliaries/mean.jld2", name = "ū")
+    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = "auxiliaries/mean.jld2", name = "v̄")
+    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = "auxiliaries/mean.jld2", name = "b̄")
 
-    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = "variance.jld2", name = "u′")
-    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = "variance.jld2", name = "v′")
-    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = "variance.jld2", name = "b′")
+    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = "auxiliaries/variance.jld2", name = "u′")
+    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = "auxiliaries/variance.jld2", name = "v′")
+    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = "auxiliaries/variance.jld2", name = "b′")
 
     B = propagate(f[:b]; func = x -> mean(x, dims = 2))
 
@@ -90,10 +90,10 @@ end
 
 function compute_variances(f::Dict, fm, iterations)
     CUDA.@allowscalar begin
-        u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X, path = "new_variance.jld2", name = "u′")
-        v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X, path = "new_variance.jld2", name = "v′")
-        w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X, path = "new_variance.jld2", name = "w′")
-        b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = "new_variance.jld2", name = "b′")
+        u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "u′")
+        v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "v′")
+        w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "w′")
+        b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "b′")
     end
     
     u′² = time_average(propagate(u′; func = x -> x^2), iterations)
@@ -125,9 +125,9 @@ end
 function compute_instability(fields, fm, iterations)
 
     CUDA.@allowscalar begin
-        b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = "new_new_variance.jld2", name = "b′")
-        u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X, path = "new_new_variance.jld2", name = "u′")
-        v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = "new_new_variance.jld2", name = "v′")
+        b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = "auxiliaries/new_new_variance.jld2", name = "b′")
+        u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X, path = "auxiliaries/new_new_variance.jld2", name = "u′")
+        v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = "auxiliaries/new_new_variance.jld2", name = "v′")
     end
     
     u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
@@ -143,6 +143,13 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
     iter = [5, 14, 19, 2]
     file_prefix = file_prefix[iter]
     
+    try 
+        readdir("./auxiliaries/")
+    catch
+        cmd = `mkdir auxiliaries`
+        run(cmd)
+    end
+
     @show file_prefix
     filenames = add_trailing_characters.(file_prefix, trailing_character)
     filenames = add_trailing_name.(filenames)
@@ -153,8 +160,15 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
         if isfile(filename) 
 	    
             arch = GPU()
+
+
             @info "doing file " filename arch
             fields = all_fieldtimeseries(filename; arch)
+
+            run(`rm ./auxiliaries/mean.jld2`)
+            run(`rm ./auxiliaries/variance.jld2`)
+            run(`rm ./auxiliaries/new_variance.jld2`)
+            run(`rm ./auxiliaries/new_new_variance.jld2`)
 
             lim = min(200, length(fields[:u].times))
 
