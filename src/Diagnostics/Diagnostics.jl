@@ -38,6 +38,23 @@ function new_fieldtimeseries_data(FT, grid, loc, indices, Nt, path, name, ::InMe
     return offset_data(underlying_data, grid, loc, indices)
 end
 
+import Base
+
+function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {LX, LY, LZ}
+    # Load data
+    file = jldopen(fts.data.path)
+    iter = keys(file["timeseries/t"])[n]
+    raw_data = arch_array(architecture(fts), file["timeseries/$(fts.data.name)/$iter"])
+    close(file)
+
+    # Wrap Field
+    loc = (LX, LY, LZ)
+    field = Field(loc, grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions)
+    set!(field, raw_data)
+
+    return field
+end
+
 set!(time_series::InMemoryFieldTimeSeries, f, index::Int) = set!(time_series[index], f)
 set!(time_series::OnDiskFieldTimeSeries, f::AbstractOperation, index::Int) = set!(time_series, compute!(Field(f)), index)
 
