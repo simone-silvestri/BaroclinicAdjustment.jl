@@ -87,18 +87,12 @@ function propagate(fields...; func, path = nothing, name = nothing)
     fields_op = Tuple(field[1] for field in fields)
     operation = func(fields_op...)
 
+    field1 = Field(operation)
+
     if !(path isa Nothing) && !(name isa Nothing)
-        idxs = [indices(fields[1])...]
-        loc  = location(operation)
-        for i in 1:3
-            if loc == Nothing
-                idxs[i] = Colon()
-            end
-        end
-        idxs = tuple(idxs...)
-        field_output = FieldTimeSeries{loc...}(fields[1].grid, fields[1].times; path, name, backend = OnDisk(), indices = idxs)
+        field_output = FieldTimeSeries{location(field1)...}(fields[1].grid, fields[1].times; path, name, backend = OnDisk(), indices = field1.indices)
     else    
-        field_output = FieldTimeSeries{location(operation)...}(fields[1].grid, fields[1].times)
+        field_output = FieldTimeSeries{location(field1)...}(fields[1].grid, fields[1].times, indices = field1.indices)
     end
 
     set!(field_output, operation, 1)

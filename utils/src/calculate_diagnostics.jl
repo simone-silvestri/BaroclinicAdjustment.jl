@@ -126,6 +126,31 @@ function compute_instability(fields, fm, iterations)
     return (; u′b′, v′b′)
 end
 
+function write_down_fields(fields::Dict)
+    new_fields = Dict()
+    grid  = fields[:u].grid
+    times = fields[:u].times
+
+    u = FieldTimeSeries{Face, Center, Center}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "u")
+    v = FieldTimeSeries{Center, Face, Center}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "v")
+    w = FieldTimeSeries{Center, Center, Face}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "w")
+    b = FieldTimeSeries{Center, Center, Center}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "b")
+
+    for t in 1:length(times)
+        set!(u, fields[:u][t], t)
+        set!(v, fields[:v][t], t)
+        set!(w, fields[:w][t], t)
+        set!(b, fields[:b][t], t)
+    end
+
+    new_fields[:u] = u
+    new_fields[:v] = v
+    new_fields[:w] = w
+    new_fields[:b] = b
+
+    return new_fields
+end
+
 function calculate_diagnostics(trailing_character = "_weaker", file_prefix = generate_names())
 
     iter = [5, 14, 19, 2]
@@ -149,9 +174,13 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
 	    
             arch = GPU()
 
+            try run(`rm ./auxiliaries/fields.jld2`); catch; end
 
             @info "doing file " filename arch
-            fields = all_fieldtimeseries(filename; arch)
+            fields_previous = all_fieldtimeseries(filename; arch)
+
+            fields = write_down_fields(fields_previous)
+
 
             lim = min(200, length(fields[:u].times))
 
