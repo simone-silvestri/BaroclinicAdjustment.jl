@@ -137,6 +137,7 @@ function write_down_fields(fields::Dict)
     b = FieldTimeSeries{Center, Center, Center}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "b")
 
     for t in 1:length(times)
+        @info "writing down time $t"
         set!(u, fields[:u][t], t)
         set!(v, fields[:v][t], t)
         set!(w, fields[:w][t], t)
