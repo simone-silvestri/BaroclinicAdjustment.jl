@@ -85,7 +85,7 @@ end
     (; u, v, w) = model.velocities
     b = model.tracers.b
 
-    launch!(architecture(grid), grid, :xyz, _compute_χ, χᵁ, χⱽ, χᵂ, u, v, w, b, bⁿ⁻¹, grid, model.advection)
+    launch!(architecture(grid), grid, :xyz, _compute_χ, χᵁ, χⱽ, χᵂ, u, v, w, b, bⁿ⁻¹, grid, model.advection.b)
 
     return nothing
 end
