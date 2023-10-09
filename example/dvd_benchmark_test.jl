@@ -17,11 +17,22 @@ resolution = 1/2 # resolution in degrees
 filename = "benchmark_dvd_sixteen"
 
 # Hypothesis: we can change the order to reduce the variance dissipation
-tracer_advection = WENO(order = 5)
+tracer_advection = WENO(order = 9)
+
+# Options for tracer advection, odd order for WENO and UpwindBiased [1..11], even for Centered [1..12]:
+# tracer_advection = WENO(order = 9)
+# tracer_advection = UpwindBiased(order = 3)
+# tracer_advection = Centered(order = 4)
 
 # Momentum advection: the best one we have yet
 momentum_advection = VectorInvariant(vorticity_scheme = WENO(order = 9), 
                                       vertical_scheme = WENO(order = 5))
+
+# Options for momentum advection, odd order for WENO and UpwindBiased [1..11], even for Centered [1..12]
+# ... same as for tracer advection
+# momentum_advection = VectorInvariant() # centered vector invariant scheme, requires dissipation
+# momentum_advection = VectorInvariant(vorticity_scheme = WENO(order = 9), # or other diffusive schemes
+#                                       vertical_scheme = WENO(order = 5)  # or other diffusive schemes)
 
 # Horizontal dissipation: we don't need it when using WENO, otherwise uncomment below
 horizontal_closure = nothing 
