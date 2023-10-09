@@ -49,9 +49,9 @@ function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {
 
     # Wrap Field
     loc = (LX, LY, LZ)
-    field = Field(loc, grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions)
+    field = Field(loc, fts.grid; indices=fts.indices, boundary_conditions=fts.boundary_conditions)
     set!(field, raw_data)
-
+    
     return field
 end
 
