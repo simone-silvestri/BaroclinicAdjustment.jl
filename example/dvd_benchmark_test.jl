@@ -1,4 +1,5 @@
 using BaroclinicAdjustment
+using BaroclinicAdjustment: baroclinic_adjustment_latlong
 using Oceananigans
 using Oceananigans.Units
 
@@ -9,7 +10,10 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Operators
 using Oceananigans.Advection: _advective_tracer_flux_x, _advective_tracer_flux_y, _advective_tracer_flux_z
 
-resolution = 1/16 # resolution in degrees
+
+# architecture and resolution
+arch = CPU()
+resolution = 1/2 # resolution in degrees
 filename = "benchmark_dvd_sixteen"
 
 # Hypothesis: we can change the order to reduce the variance dissipation
@@ -29,7 +33,7 @@ horizontal_closure = nothing
 buoyancy_forcing_timescale = 50days
 stop_time                  = 1000days
 
-simulation = baroclinic_adjustment_latlong(resolution, filename)
+simulation = baroclinic_adjustment_latlong(resolution, filename; arch)
 
 # This is the grid
 grid = simulation.model.grid
@@ -42,6 +46,7 @@ bⁿ⁻¹ = CenterField(grid)
 
 # Construct the simulation
 simulation = baroclinic_adjustment_latlong(resolution, filename; 
+                                           arch,
                                            tracer_advection, 
                                            momentum_advection,
                                            horizontal_closure,
@@ -85,8 +90,13 @@ end
     return nothing
 end
 
-
 simulation.callbacks[:compute_χ] = Callback(compute_χ, IterationInterval(1))
 simulation.callbacks[:store_previous_b] = Callback(store_previous_b, IterationInterval(1))
 
+simulation.output_writers[:dissipation] = JLD2OutputWriter(simulation.model, (; χᵁ, χⱽ, χᵂ);
+                                                           filename = filename * "_chi", 
+                                                           schedule = TimeInterval(5days),
+                                                           overwrite_existing = true)
+
+# Run it!!!
 run!(simulation)
