@@ -73,9 +73,9 @@ end
     δʸb★ = δyᶜᶠᶜ(i, j, k, grid, b★, b, bⁿ⁻¹)
     δᶻb★ = δzᶜᶜᶠ(i, j, k, grid, b★, b, bⁿ⁻¹)
 
-    𝒜x = _advective_tracer_flux_x(i, j, k, grid, advection, U, b) 
-    𝒜y = _advective_tracer_flux_y(i, j, k, grid, advection, V, b) 
-    𝒜z = _advective_tracer_flux_z(i, j, k, grid, advection, W, b) 
+    𝒜x = _advective_tracer_flux_x(i, j, k, grid, advection, U, b) # A * u b̃ where b̃ is the tracer resontructed at (Face, Center, Center) using `advection`
+    𝒜y = _advective_tracer_flux_y(i, j, k, grid, advection, V, b) # A * v b̃ where b̃ is the tracer resontructed at (Center, Face, Center) using `advection`
+    𝒜z = _advective_tracer_flux_z(i, j, k, grid, advection, W, b) # A * w b̃ where b̃ is the tracer resontructed at (Center, Center, Face) using `advection`
 
     @inbounds begin
         χᵁ[i, j, k] = 𝒜x * 2 * δˣb★ / Vᶠᶜᶜ(i, j, k, grid)
