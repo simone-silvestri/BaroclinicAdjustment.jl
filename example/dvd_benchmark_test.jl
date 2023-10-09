@@ -111,6 +111,8 @@ end
 simulation.callbacks[:compute_χ] = Callback(compute_χ, IterationInterval(1))
 simulation.callbacks[:store_previous_b] = Callback(store_previous_b, IterationInterval(1))
 
+# averaged in time: AveragedTimeInterval(5days)
+
 simulation.output_writers[:dissipation] = JLD2OutputWriter(simulation.model, (; χᵁ, χⱽ, χᵂ);
                                                            filename = filename * "_chi", 
                                                            schedule = TimeInterval(5days),
