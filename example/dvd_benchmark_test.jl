@@ -54,8 +54,15 @@ simulation = baroclinic_adjustment_latlong(resolution, filename;
                                            buoyancy_forcing_timescale,
                                            stop_time)
 
+@inline function store_previous_b(simulation) 
 
-@inline store_previous_b(s) = s.model.auxiliary_fields.bⁿ⁻¹ .= s.model.tracers.b
+    bⁿ   = simulation.model.tracers.b
+    bⁿ⁻¹ = simulation.model.auxiliary_fields.bⁿ⁻¹
+
+    parent(bⁿ⁻¹) .= parent(bⁿ)
+
+    return nothing
+end
                 
 @inline b★(i, j, k, grid, b, bⁿ⁻¹) = @inbounds (b[i, j, k] + bⁿ⁻¹[i, j, k]) / 2
 
