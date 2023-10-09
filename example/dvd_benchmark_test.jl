@@ -78,9 +78,9 @@ end
     𝒜z = _advective_tracer_flux_z(i, j, k, grid, advection, W, b) 
 
     @inbounds begin
-        χᵁ[i, j, k] = 𝒜x * 2 * δˣb★ 
-        χⱽ[i, j, k] = 𝒜y * 2 * δʸb★ 
-        χᵂ[i, j, k] = 𝒜z * 2 * δᶻb★ 
+        χᵁ[i, j, k] = 𝒜x * 2 * δˣb★ / Vᶠᶜᶜ(i, j, k, grid)
+        χⱽ[i, j, k] = 𝒜y * 2 * δʸb★ / Vᶜᶠᶜ(i, j, k, grid)
+        χᵂ[i, j, k] = 𝒜z * 2 * δᶻb★ / Vᶜᶜᶠ(i, j, k, grid)
     end
 end
 
