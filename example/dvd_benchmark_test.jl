@@ -8,8 +8,10 @@ using Oceananigans.Grids: architecture
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Operators
+using Oceananigans.Advection: UpwindScheme
 using Oceananigans.Advection: _advective_tracer_flux_x, _advective_tracer_flux_y, _advective_tracer_flux_z
 
+import Oceananigans.Advection: advective_tracer_flux_x, advective_tracer_flux_y, advective_tracer_flux_z
 
 # architecture and resolution
 arch = CPU()
@@ -54,6 +56,7 @@ bⁿ⁻¹ = CenterField(grid)
 χᵁ = XFaceField(grid)
 χⱽ = YFaceField(grid)
 χᵂ = ZFaceField(grid)
+χᵁˢ = CenterField(grid)
 
 # Construct the simulation
 simulation = baroclinic_adjustment_latlong(resolution, filename; 
@@ -61,7 +64,7 @@ simulation = baroclinic_adjustment_latlong(resolution, filename;
                                            tracer_advection, 
                                            momentum_advection,
                                            horizontal_closure,
-                                           auxiliary_fields = (; bⁿ⁻¹, χᵁ, χⱽ, χᵂ),
+                                           auxiliary_fields = (; bⁿ⁻¹, χᵁ, χⱽ, χᵂ, χᵁˢ),
                                            buoyancy_forcing_timescale,
                                            stop_time)
 
@@ -77,7 +80,36 @@ end
                 
 @inline b★(i, j, k, grid, b, bⁿ⁻¹) = @inbounds (b[i, j, k] + bⁿ⁻¹[i, j, k]) / 2
 
-@kernel function _compute_χ(χᵁ, χⱽ, χᵂ, U, V, W, b, bⁿ⁻¹, grid, advection)
+@inline b²(i, j, k, grid, b) = @inbounds b[i, j, k] * b[i, j, k]
+
+@inline function advective_tracer_flux_x(i, j, k, grid, scheme::UpwindScheme, U, c::Function, args...) 
+
+    @inbounds ũ = U[i, j, k]
+    cᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
+    cᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c, args...)
+
+    return Axᶠᶜᶜ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
+end
+
+@inline function advective_tracer_flux_y(i, j, k, grid, scheme::UpwindScheme, V, c::Function, args...)
+
+    @inbounds ṽ = V[i, j, k]
+    cᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
+    cᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c, args...)
+
+    return Ayᶜᶠᶜ(i, j, k, grid) * upwind_biased_product(ṽ, cᴸ, cᴿ)
+end
+
+@inline function advective_tracer_flux_z(i, j, k, grid, scheme::UpwindScheme, W, c::Function, args...)
+
+    @inbounds w̃ = W[i, j, k]
+    cᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
+    cᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c, args...)
+
+    return Azᶜᶜᶠ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
+end
+
+@kernel function _compute_χ(χᵁ, χⱽ, χᵂ, χᵁˢ, U, V, W, b, bⁿ⁻¹, grid, advection)
     i, j, k = @index(Global, NTuple)
 
     δˣb★ = δxᶠᶜᶜ(i, j, k, grid, b★, b, bⁿ⁻¹)
@@ -88,7 +120,11 @@ end
     𝒜y = _advective_tracer_flux_y(i, j, k, grid, advection, V, b) # A * v b̃ where b̃ is the tracer resontructed at (Center, Face, Center) using `advection`
     𝒜z = _advective_tracer_flux_z(i, j, k, grid, advection, W, b) # A * w b̃ where b̃ is the tracer resontructed at (Center, Center, Face) using `advection`
 
+    non_conservative_variance_transport = - 2 * b★(i, j, k, grid, b, bⁿ⁻¹) * δxᶜᶜᶜ(i, j, k, grid, _advective_tracer_flux_x, U, b) / Vᶜᶜᶜ(i, j, k, grid)
+    conservative_variance_transport     = δxᶜᶜᶜ(i, j, k, grid, _advective_tracer_flux_x, U, b², b) / Vᶜᶜᶜ(i, j, k, grid)
+
     @inbounds begin
+        Χᵁˢ[i, j, k] = non_conservative_variance_transport - conservative_variance_transport
         χᵁ[i, j, k] = 𝒜x * 2 * δˣb★ / Vᶠᶜᶜ(i, j, k, grid)
         χⱽ[i, j, k] = 𝒜y * 2 * δʸb★ / Vᶜᶠᶜ(i, j, k, grid)
         χᵂ[i, j, k] = 𝒜z * 2 * δᶻb★ / Vᶜᶜᶠ(i, j, k, grid)
