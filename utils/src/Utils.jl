@@ -67,6 +67,5 @@ end
 
 include("calculate_diagnostics.jl")
 include("surface_videos.jl")
-# include("plotting.jl")
 
 end # module Utils

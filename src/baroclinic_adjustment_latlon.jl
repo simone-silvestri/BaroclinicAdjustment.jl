@@ -36,11 +36,12 @@ end
 
 function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; arch = GPU(), 
                                                    horizontal_closure = nothing,
-                                                   momentum_advection = VectorInvariant(), 
+                                                   momentum_advection = VectorInvariant(),
                                                    tracer_advection = WENO(FT),
                                                    auxiliary_fields = NamedTuple(),
                                                    buoyancy_forcing_timescale = nothing,
                                                    background_νz = 1e-4,
+                                                   auxiliary_fields = NamedTuple(),
                                                    φ₀ = - 50,
                                                    stop_time = 200days)
     
@@ -62,7 +63,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
-    N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
+    N² = 4e-6  # [s⁻²] buoyancy frequency / stratification
     Δb = 0.005 # [m/s²] buoyancy difference
 
     coriolis = HydrostaticSphericalCoriolis(FT)
@@ -101,6 +102,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                           momentum_advection,
                                           auxiliary_fields,
                                           tracer_advection,
+                                          auxiliary_fields,
                                           forcing,
                                           free_surface)
 
