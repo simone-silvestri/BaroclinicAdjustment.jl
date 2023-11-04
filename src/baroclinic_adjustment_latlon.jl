@@ -38,6 +38,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                                    horizontal_closure = nothing,
                                                    momentum_advection = VectorInvariant(), 
                                                    tracer_advection = WENO(FT),
+                                                   auxiliary_fields = NamedTuple(),
                                                    buoyancy_forcing_timescale = nothing,
                                                    background_νz = 1e-4,
                                                    φ₀ = - 50,
@@ -98,6 +99,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                           closure = closures,
                                           tracers = :b,
                                           momentum_advection,
+                                          auxiliary_fields,
                                           tracer_advection,
                                           forcing,
                                           free_surface)
