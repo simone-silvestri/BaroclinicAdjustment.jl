@@ -99,7 +99,6 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                           closure = closures,
                                           tracers = :b,
                                           momentum_advection,
-                                          auxiliary_fields,
                                           tracer_advection,
                                           auxiliary_fields,
                                           forcing,
