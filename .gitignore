@@ -1,3 +1,7 @@
 *.jld2
 *.mp4
 *.txt
+*.sh
+*.png
+*.pdf
+*.eps
