@@ -1,4 +1,5 @@
 using Oceananigans.Coriolis: hack_sind
+using Oceananigans.Advection: MPData
 
 @inline function buoyancy_forcing(i, j, k, grid, clock, fields, p)
     @inbounds B  = p.B[1, j, k]
@@ -57,6 +58,8 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                 z = (-Lz, 0),
                                 halo = (6, 6, 6))
 
+    momentum_advection = isnothing(momentum_advection) ? MPData(grid, iterations = 3) : momentum_advection 
+    
     vertical_closure = VerticalScalarDiffusivity(FT; κ = 1e-5, ν = background_νz)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)

@@ -19,7 +19,7 @@ function run_high_res_simulation(resolution, FT::DataType = Float64; φ₀ = -50
     hi1 = nothing
     hi2 = QGLeith(FT)
     
-    vi1 = VectorInvariant(vorticity_scheme = EnergyConservingScheme(FT), vertical_scheme = EnergyConservingScheme(FT))
+    vi1 = VectorInvariant(vorticity_scheme = EnergyConserving(FT), vertical_scheme = EnergyConserving(FT))
     vi2 = VectorInvariant(vorticity_scheme = WENO(FT), vertical_scheme = WENO(FT))
 
     advection_schemes   = [vi2, vi1]

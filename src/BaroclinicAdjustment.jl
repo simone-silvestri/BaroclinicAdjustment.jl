@@ -7,7 +7,7 @@ using Oceananigans.Grids: minimum_xspacing, minimum_yspacing, architecture
 using Oceananigans.Operators
 using Oceananigans.Utils: getnamewrapper, launch!
 using Oceananigans.Coriolis: fᶠᶠᵃ
-using Oceananigans.Advection: VelocityStencil, DefaultStencil, EnergyConservingScheme
+using Oceananigans.Advection: VelocityStencil, DefaultStencil, EnergyConserving
 
 using Oceananigans.Advection: FunctionStencil, divergence_smoothness
 using Oceananigans.Advection: CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding
@@ -44,6 +44,7 @@ getupwindingscheme(::VectorInvariantSelfVerticalUpwinding)     = "p"
 getupwindingscheme(::VectorInvariantVelocityVerticalUpwinding) = "s"
 
 getname(s::VectorInvariant{N}) where N = "weno" * string(N * 2 - 1) * getupwindingscheme(s) * "$(s.vorticity_stencil isa VelocityStencil ? "V" : "D")"
+getname(s::Nothing) = nothing
 
 function testcases(FT)
 
@@ -53,7 +54,7 @@ function testcases(FT)
 
     # First five are the "Explicit" LES closures
     for i in 1:5
-        push!(advection_schemes, VectorInvariant(vorticity_scheme = EnergyConservingScheme(), vertical_scheme = EnergyConservingScheme()))
+        push!(advection_schemes, VectorInvariant(vorticity_scheme = EnergyConserving(), vertical_scheme = EnergyConserving()))
     end
 
     hi2 = HorizontalScalarBiharmonicDiffusivity(FT; ν = geometric_νhb, discrete_form = true, parameters = 5days)
@@ -69,11 +70,19 @@ function testcases(FT)
     for order in [5, 9]
         for Upwind in (CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding)
             for vorticity_stencil in (VelocityStencil(), DefaultStencil())
+                if Upwind == OnlySelfUpwinding
                 push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order), 
                                                            vorticity_stencil,
-                                                           vertical_scheme = WENO(FT), 
-                                                           upwinding= Upwind(cross_scheme = WENO(FT))))
-                push!(horizontal_closures, nothing)
+                                                           vertical_scheme = WENO(FT),
+ 					                   divergence_scheme = WENO(FT),
+                                                           upwinding = Upwind(; cross_scheme = WENO(FT),
+                                                           δU_stencil = FunctionStencil(Oceananigans.Advection.U_smoothness),
+                                                           δV_stencil = FunctionStencil(Oceananigans.Advection.V_smoothness) 
+							   )))
+                else
+		push!(advection_schemes, nothing)
+		end
+		push!(horizontal_closures, nothing)
                 push!(names, getname(advection_schemes[end]))
             end
         end

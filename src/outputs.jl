@@ -4,7 +4,7 @@ using Oceananigans.Utils: ConsecutiveIterations
 
 using Oceananigans
 using Oceananigans.Models: AbstractModel
-using Oceananigans.Distributed
+using Oceananigans.DistributedComputations
 
 function standard_outputs!(simulation, output_prefix; overwrite_existing = true, 
                                                       checkpoint_time    = 1000days,

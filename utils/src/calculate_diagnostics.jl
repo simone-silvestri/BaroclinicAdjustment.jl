@@ -1,6 +1,7 @@
 using Revise
 using Statistics: mean
 using Oceananigans
+using Oceananigans.BoundaryConditions
 using BaroclinicAdjustment
 using BaroclinicAdjustment: add_trailing_characters, getname
 using BaroclinicAdjustment.Diagnostics
@@ -29,6 +30,8 @@ using BaroclinicAdjustment.Diagnostics: VerticalVorticityOperation, KineticEnerg
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
+const mypath = "/orcd/nese/raffaele/001/ssilvest/"
+
 function compute_energy_diagnostics(f::Dict, iterations)
 
     KE = calculate_KE(f)
@@ -43,7 +46,7 @@ function compute_energy_diagnostics(f::Dict, iterations)
 
     KEavg = Diagnostics.time_average(E)
     CUDA.@allowscalar begin
-    	EKE = Diagnostics.propagate(E, KEavg; func = (e, ē) -> e - ē, path = "auxiliaries/energies.jld2", name = "old_EKE")
+    	EKE = Diagnostics.propagate(E, KEavg; func = (e, ē) -> e - ē)
     end
     EKEavg = Diagnostics.time_average(EKE)
 
@@ -51,23 +54,23 @@ function compute_energy_diagnostics(f::Dict, iterations)
 end
 
 function compute_energy_timeseries(f)
-    ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = "auxiliaries/mean.jld2", name = "ū")
-    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = "auxiliaries/mean.jld2", name = "v̄")
-    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = "auxiliaries/mean.jld2", name = "b̄")
+    ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = "../auxiliaries/mean_val.jld2", name = "u")
+    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = "../auxiliaries/mean_val.jld2", name = "v")
+    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = "../auxiliaries/mean_val.jld2", name = "b")
 
-    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = "auxiliaries/variance.jld2", name = "u′")
-    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = "auxiliaries/variance.jld2", name = "v′")
-    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = "auxiliaries/variance.jld2", name = "b′")
+    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = "../auxiliaries/fluc_val.jld2", name = "u")
+    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = "../auxiliaries/fluc_val.jld2", name = "v")
+    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = "../auxiliaries/fluc_val.jld2", name = "b")
 
     B = propagate(f[:b]; func = x -> mean(x, dims = 2))
 
-    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B, path = "auxiliaries/energies.jld2", name = "B̄")
-    N² = propagate(B; func = B -> StratificationOperation(B), path = "auxiliaries/energies.jld2", name = "N²")
+    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B)
+    N² = propagate(B; func = B -> StratificationOperation(B))
 
-    MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)), path = "auxiliaries/energies.jld2", name = "MEKE")
-    EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)), path = "auxiliaries/energies.jld2", name = "EKE")
-    MAPE = propagate(B̄ , N²; func = (B, N²) -> mean(0.5 * B^2 / N²),    path = "auxiliaries/energies.jld2", name = "MAPE")
-    EAPE = propagate(b′, N²; func = (b, N²) -> mean(0.5 * b^2 / N²),    path = "auxiliaries/energies.jld2", name = "EAPE")
+    MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
+    EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
+    MAPE = propagate(B̄ , N²; func = (B, N²) -> mean(0.5 * B^2 / N²))
+    EAPE = propagate(b′, N²; func = (b, N²) -> mean(0.5 * b^2 / N²))
 
     return (; MEKE, EKE, MAPE, EAPE)
 end
@@ -90,24 +93,36 @@ end
 
 function compute_variances(f::Dict, fm, iterations)
     CUDA.@allowscalar begin
-        u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "u′")
-        v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "v′")
-        w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "w′")
-        b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = "auxiliaries/new_variance.jld2", name = "b′")
+        u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X, path = "../auxiliaries/fluc2.jld2", name = "u") 
+        v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X, path = "../auxiliaries/fluc2.jld2", name = "v")
+        w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X, path = "../auxiliaries/fluc2.jld2", name = "w")
+        b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = "../auxiliaries/fluc2.jld2", name = "b")
     end
     
-    u′² = time_average(propagate(u′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "u′²"), iterations)
-    v′² = time_average(propagate(v′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "v′²"), iterations)
-    w′² = time_average(propagate(w′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "w′²"), iterations)
-    b′² = time_average(propagate(b′; func = x -> x^2, path = "auxiliaries/new_variance.jld2", name = "b′²"), iterations)
+    u′² = time_average(propagate(u′; func = x -> x^2), iterations) 
+    GC.gc(true)
+    v′² = time_average(propagate(v′; func = x -> x^2), iterations)
+    GC.gc(true)
+    w′² = time_average(propagate(w′; func = x -> x^2), iterations)
+    GC.gc(true)
+    b′² = time_average(propagate(b′; func = x -> x^2), iterations)
+    GC.gc(true)
 
-    u′v′ = time_average(propagate(u′, v′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "u′v′"), iterations)
-    u′w′ = time_average(propagate(u′, w′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "u′w′"), iterations)
-    v′w′ = time_average(propagate(v′, w′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "v′w′"), iterations)
+    GC.gc(true)
 
-    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "u′b′"), iterations)
-    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "v′b′"), iterations)
-    w′b′ = time_average(propagate(w′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_variance.jld2", name = "w′b′"), iterations)
+    u′v′ = time_average(propagate(u′, v′; func = (x, y) -> x * y), iterations) 
+    GC.gc(true)
+    u′w′ = time_average(propagate(u′, w′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
+    v′w′ = time_average(propagate(v′, w′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
+
+    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
+    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
+    w′b′ = time_average(propagate(w′, b′; func = (x, y) -> x * y), iterations)
+    GC.gc(true)
     
     return (; u′², v′², w′², b′², u′v′, u′w′, v′w′, u′b′, v′b′, w′b′)
 end
@@ -115,33 +130,44 @@ end
 function compute_instability(fields, fm, iterations)
 
     CUDA.@allowscalar begin
-        b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = "auxiliaries/new_new_variance.jld2", name = "b′")
-        u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X, path = "auxiliaries/new_new_variance.jld2", name = "u′")
-        v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = "auxiliaries/new_new_variance.jld2", name = "v′")
+        b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = "../auxiliaries/fluc3.jld2", name = "u")
+        u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X, path = "../auxiliaries/fluc3.jld2", name = "v")
+        v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = "../auxiliaries/fluc3.jld2", name = "b")
     end
     
-    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_new_variance.jld2", name = "u′b′"), iterations)
-    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y, path = "auxiliaries/new_new_variance.jld2", name = "v′b′"), iterations)
+    u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y))
+    v′b′ = time_average(propagate(v′, b′; func = (x, y) -> x * y))
 
     return (; u′b′, v′b′)
 end
 
-function write_down_fields(fields::Dict)
+function write_down_fields(fields::Dict, newpath)
     new_fields = Dict()
     grid  = fields[:u].grid
     times = fields[:u].times
+    path = fields[:u].path
 
-    u = FieldTimeSeries{Face, Center, Center}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "u")
-    v = FieldTimeSeries{Center, Face, Center}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "v")
-    w = FieldTimeSeries{Center, Center, Face}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "w")
-    b = FieldTimeSeries{Center, Center, Center}(grid, times; backend = OnDisk(), path = "auxiliaries/fields.jld2", name = "b")
+    u = FieldTimeSeries{Face, Center, Center}(grid,   times; backend = OnDisk(), path = newpath * path, name = "u")
+    v = FieldTimeSeries{Center, Face, Center}(grid,   times; backend = OnDisk(), path = newpath * path, name = "v")
+    w = FieldTimeSeries{Center, Center, Face}(grid,   times; backend = OnDisk(), path = newpath * path, name = "w")
+    b = FieldTimeSeries{Center, Center, Center}(grid, times; backend = OnDisk(), path = newpath * path, name = "b") 
 
-    for t in 1:length(times)
-        @info "writing down time $t"
-        set!(u, fields[:u][t], t)
-        set!(v, fields[:v][t], t)
-        set!(w, fields[:w][t], t)
-        set!(b, fields[:b][t], t)
+    utmp =  XFaceField(on_architecture(CPU(), grid))
+    vtmp =  YFaceField(on_architecture(CPU(), grid))
+    wtmp =  ZFaceField(on_architecture(CPU(), grid))
+    btmp = CenterField(on_architecture(CPU(), grid))
+
+    for t in eachindex(times)
+      set!(utmp, Array(interior(fields[:u][t])))
+      set!(vtmp, Array(interior(fields[:v][t])))
+      set!(wtmp, Array(interior(fields[:w][t])))
+      set!(btmp, Array(interior(fields[:b][t])))
+      fill_halo_regions!((utmp, vtmp, wtmp, btmp))
+
+      set!(u, utmp, t) 
+      set!(v, vtmp, t)
+      set!(w, wtmp, t)
+      set!(b, btmp, t)
     end
 
     new_fields[:u] = u
@@ -153,14 +179,15 @@ function write_down_fields(fields::Dict)
 end
 
 function calculate_diagnostics(trailing_character = "_weaker", file_prefix = generate_names())
-
-    iter = [5, 14, 19, 2]
-    file_prefix = file_prefix[iter]
     
     try 
-        readdir("./auxiliaries/")
+        files = readdir(mypath * "/auxiliaries/")
+        for file in files
+	   cmd = `rm $(mypath)auxiliaries/$(file)`
+           run(cmd)
+        end
     catch
-        cmd = `mkdir auxiliaries`
+        cmd = `mkdir $(mypath)auxiliaries`
         run(cmd)
     end
 
@@ -175,13 +202,9 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
 	    
             arch = GPU()
 
-            try run(`rm ./auxiliaries/fields.jld2`); catch; end
-
             @info "doing file " filename arch
             fields_previous = all_fieldtimeseries(filename; arch)
-
-            fields = write_down_fields(fields_previous)
-
+	    fields = write_down_fields(fields_previous, mypath * "/auxiliaries/")            
 
             lim = min(200, length(fields[:u].times))
 
@@ -190,7 +213,9 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             GC.gc(true)
             enstrophy = calculate_Ω(fields)
             GC.gc(true)
-            N²        = calculate_N²(fields)
+            CUDA.@allowscalar begin
+               N²        = calculate_N²(fields)
+            end
             GC.gc(true)
             spectra   = compute_spectra(fields, 50:lim)
             GC.gc(true)
@@ -201,21 +226,15 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             instab    = compute_instability(fields, averages, 50:lim)
             GC.gc(true)
 
-	        postprocess[:energies]  = move_on_cpu(energy)
-	        postprocess[:enstrophy] = move_on_cpu(enstrophy)
-	        postprocess[:stratif]   = move_on_cpu(N²)
-	        postprocess[:spectra]   = move_on_cpu(spectra)
-	        postprocess[:mean]      = move_on_cpu(averages)
-	        postprocess[:variance]  = move_on_cpu(variance)
-	        postprocess[:instab]    = move_on_cpu(instab)
+	    postprocess[:energies]  = move_on_cpu(energy)
+	    postprocess[:enstrophy] = move_on_cpu(enstrophy)
+	    postprocess[:stratif]   = move_on_cpu(N²)
+	    postprocess[:spectra]   = move_on_cpu(spectra)
+	    postprocess[:mean]      = move_on_cpu(averages)
+	    postprocess[:variance]  = move_on_cpu(variance)
+	    postprocess[:instab]    = move_on_cpu(instab)
 
             write_file!(prefix * trailing_character * "_postprocess.jld2", postprocess)
-
-            try run(`mv ./auxiliaries/mean.jld2 ./auxiliaries/$(file_prefix)_mean.jld2`); catch; end
-            try run(`mv ./auxiliaries/variance.jld2 ./auxiliaries/$(file_prefix)_variance.jld2`); catch; end
-            try run(`mv ./auxiliaries/energies.jld2 ./auxiliaries/$(file_prefix)_energies.jld2`); catch; end
-            try run(`mv ./auxiliaries/new_variance.jld2 ./auxiliaries/$(file_prefix)_new_variance.jld2`); catch; end
-            try run(`mv ./auxiliaries/new_new_variance.jld2 ./auxiliaries/$(file_prefix)_new_new_variance.jld2`); catch; end
         end
     end
 

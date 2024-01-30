@@ -1,0 +1,32 @@
+Precompiling project...
+[32m  ✓ [39mBaroclinicAdjustment
+  1 dependency successfully precompiled in 16 seconds. 134 already precompiled.
+  [33m1[39m dependency had warnings during precompilation:[33m
+┌ [39mBaroclinicAdjustment [2ba04c38-97e8-4ac2-88ab-325be645c0d7][33m
+│  [39mWARNING: Method definition (::Type{Oceananigans.OutputReaders.FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} where χ where B where T where G where D where I where K})(Any, Any) where {LX, LY, LZ} in module OutputReaders at /orcd/nese/raffaele/001/ssilvest/depot/packages/Oceananigans/Tj6om/src/OutputReaders/field_time_series.jl:54 overwritten in module Diagnostics at /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/src/Diagnostics/Diagnostics.jl:18.[33m
+│  [39m  ** incremental compilation may be fatally broken for this module **[33m
+│  [39m[33m
+│  [39mWARNING: Method definition (::Type{Oceananigans.OutputReaders.FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} where χ where B where T where G where D where I where K})(Any, Any, Any) where {LX, LY, LZ} in module OutputReaders at /orcd/nese/raffaele/001/ssilvest/depot/packages/Oceananigans/Tj6om/src/OutputReaders/field_time_series.jl:54 overwritten in module Diagnostics at /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/src/Diagnostics/Diagnostics.jl:18.[33m
+│  [39m  ** incremental compilation may be fatally broken for this module **[33m
+│  [39m[33m
+│  [39mWARNING: Method definition kwcall(Any, Type{Oceananigans.OutputReaders.FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} where χ where B where T where G where D where I where K}, Any, Any) where {LX, LY, LZ} in module OutputReaders at /orcd/nese/raffaele/001/ssilvest/depot/packages/Oceananigans/Tj6om/src/OutputReaders/field_time_series.jl:54 overwritten in module Diagnostics at /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/src/Diagnostics/Diagnostics.jl:18.[33m
+│  [39m  ** incremental compilation may be fatally broken for this module **[33m
+│  [39m[33m
+│  [39mWARNING: Method definition kwcall(Any, Type{Oceananigans.OutputReaders.FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} where χ where B where T where G where D where I where K}, Any, Any, Any) where {LX, LY, LZ} in module OutputReaders at /orcd/nese/raffaele/001/ssilvest/depot/packages/Oceananigans/Tj6om/src/OutputReaders/field_time_series.jl:54 overwritten in module Diagnostics at /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/src/Diagnostics/Diagnostics.jl:18.[33m
+│  [39m  ** incremental compilation may be fatally broken for this module **[33m
+│  [39m[33m
+│  [39mWARNING: Method definition getindex(Oceananigans.OutputReaders.FieldTimeSeries{LX, LY, LZ, Oceananigans.OutputReaders.OnDisk, I, D, G, T, B, χ} where χ where B where T where G where D where I, Int64) where {LX, LY, LZ} in module OutputReaders at /orcd/nese/raffaele/001/ssilvest/depot/packages/Oceananigans/Tj6om/src/OutputReaders/field_time_series.jl:168 overwritten in module Diagnostics at /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/src/Diagnostics/Diagnostics.jl:43.[33m
+│  [39m  ** incremental compilation may be fatally broken for this module **[33m
+└  [39m
+ERROR: LoadError: UndefVarError: `Upwinding` not defined
+Stacktrace:
+ [1] testcases(FT::Type)
+   @ BaroclinicAdjustment /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/src/BaroclinicAdjustment.jl:72
+ [2] top-level scope
+   @ /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/run_restoring.jl:10
+in expression starting at /orcd/nese/raffaele/001/ssilvest/BaroclinicAdjustment.jl/run_restoring.jl:10
+C = (Cₗ / π) ^ 3 / 8 = 0.004031441804149937
+typeof(visc.ν) = Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, NamedTuple{(:C, :Area), Tuple{Float64, typeof(BaroclinicAdjustment.Δ²ᵃᵃᵃ)}}, typeof(BaroclinicAdjustment.νhb_leith_final)}
+C = (Cₗ / π) ^ 3 = 0.032251534433199495
+typeof(visc.ν) = Oceananigans.TurbulenceClosures.DiscreteDiffusionFunction{Nothing, Nothing, Nothing, NamedTuple{(:C, :Area), Tuple{Float64, typeof(BaroclinicAdjustment.Δ²ᵃᵃᵃ)}}, typeof(BaroclinicAdjustment.νhb_leith_laplacian_final)}
+C = (Cₛₘ / π) ^ 2 / 8 = 0.002564692460946675
