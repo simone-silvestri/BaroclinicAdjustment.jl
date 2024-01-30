@@ -7,7 +7,7 @@ using Oceananigans.Grids: minimum_xspacing, minimum_yspacing, architecture
 using Oceananigans.Operators
 using Oceananigans.Utils: getnamewrapper, launch!
 using Oceananigans.Coriolis: fᶠᶠᵃ
-using Oceananigans.Advection: VelocityStencil, DefaultStencil, EnergyConservingScheme
+using Oceananigans.Advection: VelocityStencil, DefaultStencil, EnergyConserving
 
 using Oceananigans.Advection: FunctionStencil, divergence_smoothness
 using Oceananigans.Advection: CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding
@@ -53,7 +53,7 @@ function testcases(FT)
 
     # First five are the "Explicit" LES closures
     for i in 1:5
-        push!(advection_schemes, VectorInvariant(vorticity_scheme = EnergyConservingScheme(), vertical_scheme = EnergyConservingScheme()))
+        push!(advection_schemes, VectorInvariant(vorticity_scheme = EnergyConserving(), vertical_scheme = EnergyConserving()))
     end
 
     hi2 = HorizontalScalarBiharmonicDiffusivity(FT; ν = geometric_νhb, discrete_form = true, parameters = 5days)
@@ -112,7 +112,6 @@ function testcases(FT)
 end
 
 include("baroclinic_adjustment_latlon.jl")
-include("restoring_baroclinic_adjustment_latlon.jl")
 include("run_simulations.jl")
 include("Diagnostics/Diagnostics.jl")
 

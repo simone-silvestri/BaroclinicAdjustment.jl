@@ -38,11 +38,11 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                                    horizontal_closure = nothing,
                                                    momentum_advection = VectorInvariant(),
                                                    tracer_advection = WENO(FT),
-                                                   buoyancy_forcing_timescale = nothing,
+                                                   buoyancy_forcing_timescale = 50days,
                                                    background_νz = 1e-4,
                                                    auxiliary_fields = NamedTuple(),
                                                    φ₀ = - 50,
-                                                   stop_time = 200days)
+                                                   stop_time = 1000days)
     
     # Domain
     Lz = 1kilometers     # depth [m]

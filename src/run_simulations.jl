@@ -15,12 +15,12 @@ function run_simulations(resolution, FT::DataType = Float64; φ₀ = -50, simula
 end
 
 function run_all_simulations(; simulation = baroclinic_adjustment_latlong, 
-                               FT::DataType = Float64; 
+                               FT::DataType = Float64,
                                φ₀ = -50) 
                                                           
-    run_simulations(1/8,  FT; φ₀, simulation; trailing_character = "_eight")
-    run_simulations(1/16, FT; φ₀, simulation; trailing_character = "_sixteen")
-    run_simulations(1/32, FT; φ₀, simulation; trailing_character = "_thirtytwo")
+    run_simulations(1/8,  FT; φ₀, simulation, trailing_character = "_eight")
+    run_simulations(1/16, FT; φ₀, simulation, trailing_character = "_sixteen")
+    run_simulations(1/32, FT; φ₀, simulation, trailing_character = "_thirtytwo")
     
     return nothing
 end

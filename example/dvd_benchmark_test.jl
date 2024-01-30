@@ -58,6 +58,8 @@ bⁿ⁻¹ = CenterField(grid)
 χᵂ = ZFaceField(grid)
 χᵁˢ = CenterField(grid)
 
+b²_est = Field{Face, Center, Center}(grid)
+
 # Construct the simulation
 simulation = baroclinic_adjustment_latlong(resolution, filename; 
                                            arch,
@@ -131,6 +133,8 @@ end
     end
 end
 
+vol = VolumeField(grid)
+
 @inline function compute_χ(simulation)
     model = simulation.model
     grid  = model.grid
@@ -141,6 +145,14 @@ end
 
     launch!(architecture(grid), grid, :xyz, _compute_χ, χᵁ, χⱽ, χᵂ, u, v, w, b, bⁿ⁻¹, grid, model.advection.b)
 
+
+    χᵁ_mean = sum(χᵁ .* vol) / sum(vol)
+    χⱽ_mean = sum(χⱽ .* vol) / sum(vol)
+    χᵂ_mean = sum(χᵂ .* vol) / sum(vol)
+    Fb_mean = sum(Fb .* vol) / sum(vol)
+
+    b²_est .= b²_est .+ Δt .* (χᵁ_mean .+ χᵁ_mean)
+
     return nothing
 end
 
@@ -149,7 +161,7 @@ simulation.callbacks[:store_previous_b] = Callback(store_previous_b, IterationIn
 
 # averaged in time: AveragedTimeInterval(5days)
 
-simulation.output_writers[:dissipation] = JLD2OutputWriter(simulation.model, (; χᵁ, χⱽ, χᵂ);
+simulation.output_writers[:dissipation] = JLD2OutputWriter(simulation.model, (; χᵁ, χⱽ, χᵂ, b²_est);
                                                            filename = filename * "_chi", 
                                                            schedule = TimeInterval(5days),
                                                            overwrite_existing = true)

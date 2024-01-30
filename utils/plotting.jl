@@ -8,10 +8,12 @@ labels_to_plot = ["bilap",
                   "qgleith", 
                   "weno5pV",
                   "weno9pV", 
-                  "weno9pAllD"]
+                  "weno9pAllD",
+                  "leith",
+                  "smag"]
 
-label_all_three = ["qgleith", "weno9pV"]
-label_fifty = ["qgleith", "leith", "weno5pV"]
+label_all_three = ["qgleith", "weno9pV", "leith", "smag"] #, "weno5pV"]
+label_fifty = ["qgleith"]
 
 heatmaps_to_plot = ["qgleith", 
                     "weno9pV", 
@@ -46,7 +48,7 @@ end
                 
 function all_contours()
     fig1 = Figure(resolution = (5000, 5000))
-    fig1 = BTenergy_contours(fig1)
+    fig1 = energy_contours(fig1)
 
     fig2 = Figure(resolution = (5000, 5000))
     fig2 = vorticity_contours(fig2)
@@ -67,28 +69,29 @@ function all_contours_white()
     return fig1
 end
 
-create_axis(fig, row, column, title, xlabel, ylabel, xticks, yticks = ([], [])) = 
+create_axis(fig, row, column, title, xlabel, ylabel, xticks, yticks = ([], []); yscale = identity) = 
     Axis(fig[row, column]; 
+    yscale,
     xticks,
     yticks,
-    # xgridvisible = false, ygridvisible = false,
-    # xminorticksvisible = true, yminorticksvisible = true, 
-    # xticksmirrored = true,
-    # yticksmirrored = true,
-    # xminortickalign = 0,
-    # yminortickalign = 0,
-    # xtickalign = Makie.automatic,
-    # ytickalign = Makie.automatic,
-    # xminorticks = IntervalsBetween(9),
-    # yminorticks = IntervalsBetween(5),
+    xgridvisible = false, ygridvisible = false,
     xlabel, ylabel,
     title)
 
-
+# xminorticksvisible = true, yminorticksvisible = true, 
+# xticksmirrored = true,
+# yticksmirrored = true,
+# xminortickalign = 0,
+# yminortickalign = 0,
+# xtickalign = Makie.automatic,
+# ytickalign = Makie.automatic,
+# xminorticks = IntervalsBetween(9),
+# yminorticks = IntervalsBetween(5),
+    
 function plot_stuff_all_three!(ax, E4, E8, E16, E50)
 
-    days  = range(1, 100, length = 101)
-    days2 = range(1, 100, length = 11)
+    days  = range(1, 200, length = 101)
+    days2 = range(1, 200, length = 11)
 
     D4  = []
     D8  = []
@@ -104,49 +107,52 @@ function plot_stuff_all_three!(ax, E4, E8, E16, E50)
 
     days5 = [length(E50[i].val) < 101 ?  range(1, 100, length = 26) : days for i in eachindex(E50)]
 
-    lines!(ax, days5[1], E50[1], linewidth = 7, color = Symbol("gray"))
+    lines!(ax, days5[1], E50[1], linewidth = 7, color = RGBf(0.8, 0.8, 0.8))
     if length(E50) > 1
         lines!(ax, days5[2], E50[2], linewidth = 7, color = :red)
     end
     if length(E50) > 2
         lines!(ax, days5[3], E50[3], linewidth = 7, color = :deepskyblue)
     end
+    if length(E50) > 3
+        lines!(ax, days5[4], E50[4], linewidth = 7, color = :purple)
+    end
     
-    lines!(ax, days, E4[1], linewidth = 0.8, color = :green3)
+    lines!(ax, days, E4[1], linewidth = 0.75, color = :green3)
     scatter!(ax, days2, D4[1],  markersize = 10, marker = :rect,      color = Symbol("green3"))    
-    lines!(ax, days, E4[2], linewidth = 0.8, color = :purple)
+    lines!(ax, days, E4[2], linewidth = 0.75, color = :purple)
     scatter!(ax, days2, D4[2],  markersize = 10, marker = :ltriangle, color = Symbol("purple"))
 
-    lines!(ax, days, E8[1], linewidth = 1.8, color = :green3)
-    scatter!(ax, days2, D8[1],  markersize = 15, marker = :rect,      color = Symbol("green3"))    
-    lines!(ax, days, E8[2], linewidth = 1.8, color = :purple)
-    scatter!(ax, days2, D8[2],  markersize = 15, marker = :ltriangle, color = Symbol("purple"))
+    lines!(ax, days, E8[1], linewidth = 1.5, color = :green3)
+    scatter!(ax, days2, D8[1],  markersize = 12.5, marker = :rect,      color = Symbol("green3"))    
+    lines!(ax, days, E8[2], linewidth = 1.5, color = :purple)
+    scatter!(ax, days2, D8[2],  markersize = 12.5, marker = :ltriangle, color = Symbol("purple"))
 
-    lines!(ax, days, E16[1], linewidth = 3.2, color = :green3)
-    scatter!(ax, days2, D16[1], markersize = 20, marker = :rect,      color = Symbol("green3"))    
-    lines!(ax, days, E16[2], linewidth = 3.2, color = :purple)
-    scatter!(ax, days2, D16[2], markersize = 20, marker = :ltriangle, color = Symbol("purple"))
+    lines!(ax, days, E16[1], linewidth = 3.0, color = :green3)
+    scatter!(ax, days2, D16[1], markersize = 15, marker = :rect,      color = Symbol("green3"))    
+    lines!(ax, days, E16[2], linewidth = 3.0, color = :purple)
+    scatter!(ax, days2, D16[2], markersize = 15, marker = :ltriangle, color = Symbol("purple"))
 
     if length(E4) > 2
-        lines!(ax, days, E4[3],  linewidth = 0.8, color = :red)
-        lines!(ax, days, E8[3],  linewidth = 1.8, color = :red)
-        lines!(ax, days, E16[3], linewidth = 3.2, color = :red)
+        lines!(ax, days, E4[3],  linewidth = 0.75, color = :red)
+        lines!(ax, days, E8[3],  linewidth = 1.5,  color = :red)
+        lines!(ax, days, E16[3], linewidth = 3.0,  color = :red)
     end
     if length(E4) > 3
-        lines!(ax, days, E4[4],  linewidth = 0.8, color = :deepskyblue)
-        lines!(ax, days, E8[4],  linewidth = 1.8, color = :deepskyblue)
-        lines!(ax, days, E16[4], linewidth = 3.2, color = :deepskyblue)
+        lines!(ax, days, E4[4],  linewidth = 0.75, color = :deepskyblue)
+        lines!(ax, days, E8[4],  linewidth = 1.5,  color = :deepskyblue)
+        lines!(ax, days, E16[4], linewidth = 3.0,  color = :deepskyblue)
     end
 
     if length(D4) > 2
-        scatter!(ax, days2, D4[3], markersize  = 10, marker = :cross, color = Symbol("red"))
-        scatter!(ax, days2, D8[3], markersize  = 10, marker = :cross, color = Symbol("red"))
-        scatter!(ax, days2, D16[3], markersize = 10, marker = :cross, color = Symbol("red"))
+        scatter!(ax, days2, D4[3], markersize  = 10,   marker = :rtriangle, color = Symbol("red"))
+        scatter!(ax, days2, D8[3], markersize  = 12.5, marker = :rtriangle, color = Symbol("red"))
+        scatter!(ax, days2, D16[3], markersize = 15,   marker = :rtriangle, color = Symbol("red"))
     end
     if length(D4) > 3
-        scatter!(ax, days2, D4[4], markersize  = 10, marker = :diamond, color = Symbol("deepskyblue"))
-        scatter!(ax, days2, D8[4], markersize  = 10, marker = :diamond, color = Symbol("deepskyblue"))
-        scatter!(ax, days2, D16[4], markersize = 10, marker = :diamond, color = Symbol("deepskyblue"))
+        scatter!(ax, days2, D4[4], markersize  = 10,   marker = :diamond, color = Symbol("deepskyblue"))
+        scatter!(ax, days2, D8[4], markersize  = 12.5, marker = :diamond, color = Symbol("deepskyblue"))
+        scatter!(ax, days2, D16[4], markersize = 15,   marker = :diamond, color = Symbol("deepskyblue"))
     end
 
     return nothing
@@ -183,7 +189,7 @@ function plot_stuff!(ax, E)
     scatter!(ax, days, D[4], markersize = 10, marker = :ltriangle, color = Symbol("purple"))
     scatter!(ax, days, D[5], markersize = 10, marker = :utriangle, color = Symbol("blue"))       
     if length(D) > 5
-        scatter!(ax, days, D[6], markersize = 10, marker = :cross, color = Symbol("red"))      
+        scatter!(ax, days, D[6], markersize = 10, marker = :rtriangle, color = Symbol("red"))      
     end
     if length(D) > 6
         scatter!(ax, days, D[7], markersize = 10, marker = :star4, color = Symbol("yellow"))
@@ -195,12 +201,64 @@ function plot_stuff!(ax, E)
     return nothing
 end
 
+function plot_stratif_RPE(; row, column, fig = nothing, title = "", 
+                          xlabel = L"days", ylabel = "",
+                          xlims = nothing, ylims = nothing, xticks = ([], []), yticks = ticks([]))
+
+    iter = Observable(201)
+
+    keys = label_all_three
+
+    en4  = jldopen("energies_quarter.jld2")
+    en8  = jldopen("energies_eight.jld2")
+    en16 = jldopen("energies_sixteen.jld2")
+    en50 = jldopen("energies_fifty.jld2")
+
+    st4  = jldopen("stratif_quarter.jld2")
+    st8  = jldopen("stratif_eight.jld2")
+    st16 = jldopen("stratif_sixteen.jld2")
+    st50 = jldopen("stratif_fifty.jld2")
+
+    KE4  = []
+    KE8  = []
+    KE16 = []
+    KE50 = []
+    for i in eachindex(keys)
+        push!(KE4,  @lift( st4[keys[i]][1:2:$iter] ./ ( en4[keys[i]].RPE[1:2:$iter] .-  en4[keys[i]].RPE[1])./ 4e-6 .* 1e17))
+        push!(KE8,  @lift( st8[keys[i]][1:2:$iter] ./ ( en8[keys[i]].RPE[1:2:$iter] .-  en8[keys[i]].RPE[1])./ 4e-6 .* 1e17))
+        push!(KE16, @lift(st16[keys[i]][1:2:$iter] ./ (en16[keys[i]].RPE[1:2:$iter] .- en16[keys[i]].RPE[1])./ 4e-6 .* 1e17))
+    end
+    for key in label_fifty
+        myiter = length(st50[key]) < 201 ? Observable(51) : Observable(201)
+        push!(KE50, @lift(st50[key][1:2:$myiter] ./ (en50[key].RPE[1:2:$myiter] .- en50[key].RPE[1]) ./ 4e-6 .* 1e17))
+    end
+
+    if isnothing(fig)
+        fig = Figure(resolution = (1000, 500))
+    end
+
+    ax1 = create_axis(fig, row, column, title, xlabel, ylabel, xticks, yticks)
+
+    plot_stuff_all_three!(ax1, KE4, KE8, KE16, KE50)
+    # if isnothing(xlims)
+    #     xlims!(ax1, (0, 100))
+    # else        
+    #     xlims!(ax1, xlims)
+    # end
+
+    # if !isnothing(ylims)
+    #     ylims!(ax1, ylims)
+    # end
+
+    return fig
+end
+
 function plot_all_three(prefix; row, column, fig = nothing, title = "", 
                                 xlabel = L"days", ylabel = "", normalize = true, 
-                                normalize_val = 1, energy = false,
+                                normalize_val = 1, energy = false, 
                                 xlims = nothing, ylims = nothing, xticks = ([], []), yticks = ticks([]))
     
-    iter = Observable(201)
+    iter = Observable(401)
 
     keys = label_all_three
 
@@ -215,23 +273,23 @@ function plot_all_three(prefix; row, column, fig = nothing, title = "",
     KE50 = []
     if energy
         for i in eachindex(keys)
-            push!(KE4,  !(normalize) ? @lift( file4[keys[i]].KE[1:2:$iter]) : @lift( file4[keys[i]].KE[1:2:$iter] ./ normalize_val))
-            push!(KE8,  !(normalize) ? @lift( file8[keys[i]].KE[1:2:$iter]) : @lift( file8[keys[i]].KE[1:2:$iter] ./ normalize_val))
-            push!(KE16, !(normalize) ? @lift(file16[keys[i]].KE[1:2:$iter]) : @lift(file16[keys[i]].KE[1:2:$iter] ./ normalize_val))
+            push!(KE4,  !(normalize) ? @lift( file4[keys[i]].KE[1:4:$iter]) : @lift( file4[keys[i]].KE[1:4:$iter] ./ normalize_val))
+            push!(KE8,  !(normalize) ? @lift( file8[keys[i]].KE[1:4:$iter]) : @lift( file8[keys[i]].KE[1:4:$iter] ./ normalize_val))
+            push!(KE16, !(normalize) ? @lift(file16[keys[i]].KE[1:4:$iter]) : @lift(file16[keys[i]].KE[1:4:$iter] ./ normalize_val))
         end
         for key in label_fifty
-            myiter = length(file50[key].KE) < 201 ? Observable(51) : Observable(201)
-            push!(KE50, !(normalize) ? @lift(file50[key].KE[1:2:$myiter]) : @lift(file50[key].KE[1:2:$myiter] ./ normalize_val))
+            myiter = length(file50[key].KE) < 201 ? Observable(101) : Observable(201)
+            push!(KE50, !(normalize) ? @lift(file50[key].KE[1:4:$myiter]) : @lift(file50[key].KE[1:4:$myiter] ./ normalize_val))
         end
     else
         for i in eachindex(keys)
-            push!(KE4,  !(normalize) ? @lift( file4[keys[i]][1:2:$iter]) : @lift( file4[keys[i]][1:2:$iter] ./ normalize_val))
-            push!(KE8,  !(normalize) ? @lift( file8[keys[i]][1:2:$iter]) : @lift( file8[keys[i]][1:2:$iter] ./ normalize_val))
-            push!(KE16, !(normalize) ? @lift(file16[keys[i]][1:2:$iter]) : @lift(file16[keys[i]][1:2:$iter] ./ normalize_val))
+            push!(KE4,  !(normalize) ? @lift( file4[keys[i]][1:4:$iter]) : @lift( file4[keys[i]][1:4:$iter] ./ normalize_val))
+            push!(KE8,  !(normalize) ? @lift( file8[keys[i]][1:4:$iter]) : @lift( file8[keys[i]][1:4:$iter] ./ normalize_val))
+            push!(KE16, !(normalize) ? @lift(file16[keys[i]][1:4:$iter]) : @lift(file16[keys[i]][1:4:$iter] ./ normalize_val))
         end
         for key in label_fifty
-            myiter = length(file50[key]) < 201 ? Observable(51) : Observable(201)
-            push!(KE50, !(normalize) ? @lift(file50[key][1:2:$myiter]) : @lift(file50[key][1:2:$myiter] ./ normalize_val))
+            myiter = length(file50[key]) < 201 ? Observable(101) : Observable(201)
+            push!(KE50, !(normalize) ? @lift(file50[key][1:4:$myiter]) : @lift(file50[key][1:4:$myiter] ./ normalize_val))
         end
     end
 
@@ -308,18 +366,26 @@ function plot_energies(filename; row = 1, fig = nothing, xlabel = "", legend = t
         push!(keys, l)
     end
 
-    file = jldopen("energies" * filename * ".jld2")
+    file  = jldopen("energies" * filename * ".jld2")
+    strat = jldopen("stratif" * filename * ".jld2")
 
     KE = []
+    ST = []
     for i in eachindex(keys)
         push!(KE, !(normalize) ? @lift(file[keys[i]].KE[1:2:$iter] .* 1e3) : @lift(file[keys[i]].KE[1:2:$iter] .* 1e3 ./ 1e17))
+    end
+    for i in eachindex(keys)
+        push!(ST, @lift(strat[keys[i]][1:2:$iter] ./ 4e-6))
     end
 
     if isnothing(fig)
         fig = Figure(resolution = (1000, 500))
     end
 
-    ax1 = create_axis(fig, row, 1, (row == 1 ? L"\int_V KE dV  / 10^{17}" : ""), xlabel, "", xticks, yticks[1])
+    title_ke  = L"\text{KE}" 
+    title_rpe = L"\text{RPE} - \text{RPE}_0"
+    title_frac = L"\text{KE}/(\text{RPE} - \text{RPE}_0)"
+    ax1 = create_axis(fig, row, 1, (row == 1 ? title_ke : ""), xlabel, "", xticks, yticks[1])
 
     plot_stuff!(ax1, KE)
     xlims!(ax1, (0, 100))
@@ -329,7 +395,7 @@ function plot_energies(filename; row = 1, fig = nothing, xlabel = "", legend = t
         push!(RPE, !(normalize) ? @lift(file[keys[i]].RPE[1:2:$iter] .- file[keys[i]].RPE[1]) : @lift((file[keys[i]].RPE[1:2:$iter] .- file[keys[i]].RPE[1]) ./ 1e17))
     end
 
-    ax2 = create_axis(fig, row, 2, (row == 1 ? L"\int_V RPE - RPE_0 dV  /  10^{17}" : ""), xlabel, "", xticks, yticks[2])
+    ax2 = create_axis(fig, row, 2, (row == 1 ? title_rpe : ""), xlabel, "", xticks, yticks[2])
 
     plot_stuff!(ax2, RPE)
     xlims!(ax2, (0, 100))
@@ -341,7 +407,7 @@ function plot_energies(filename; row = 1, fig = nothing, xlabel = "", legend = t
         push!(DE, @lift($ke ./ $rpe))
     end
     
-    ax3 = create_axis(fig, row, 3, (row == 1 ? L"\int_V \frac{KE}{RPE - RPE_0} dV  /  10^{17}" : ""), xlabel, "", xticks, yticks[3])
+    ax3 = create_axis(fig, row, 3, (row == 1 ? title_frac : ""), xlabel, "", xticks, yticks[3])
 
     plot_stuff!(ax3, DE)
     xlims!(ax3, (10, 100))
@@ -503,7 +569,7 @@ function heatmap_energies(filename = "", variable = nothing; fig = nothing,
         else
             ax = GeoAxis(fig[row, i]; dest = "+proj=ortho", coastlines = false, lonlims = (-10, 10), latlims = (-60, -40))
         end
-        surface!(ax, x2, y2, map2[i]; colorrange, colormap, shading = false)
+        !(filename isa WhiteContour) && surface!(ax, x2, y2, map2[i]; colorrange, colormap, shading = false)
         hidedecorations!(ax)
         hide_spines && hidespines!(ax)
     end
@@ -514,10 +580,14 @@ function heatmap_energies(filename = "", variable = nothing; fig = nothing,
     else
         ax = GeoAxis(fig[row, i]; dest = "+proj=ortho", coastlines = false, lonlims = (-10, 10), latlims = (-60, -40))
     end
-    hm = surface!(ax, x, y, map[i]; colorrange, colormap, shading = false)
+    !(filename isa WhiteContour) && surface!(ax, x, y, map[i]; colorrange, colormap, shading = false)
     hidedecorations!(ax)
     hide_spines && hidespines!(ax)
 
+    figtmp = Figure()
+    axtmp = GeoAxis(figtmp[1, 1]; dest = "+proj=ortho", coastlines = false, lonlims = (-10, 10), latlims = (-60, -40))
+    hm    = surface!(axtmp, x, y, map[i]; colorrange, colormap, shading = false)
+    
     Colorbar(fig[row, length(map)+1], hm, width = 10, height = Relative(2/3))
 
     return fig
@@ -530,10 +600,10 @@ function BTenergy_contours(fig)
     return fig
 end
 
-function energy_contours(level = 1)
-    fig = heatmap_energies("contours_quarter", "energy"; level, colormap = :viridis, plot_titles = true, maxrange = 1)
-    fig = heatmap_energies("contours_eight", "energy"; level, fig, row = 2, colormap = :viridis, maxrange = 1)
-    fig = heatmap_energies("contours_sixteen", "energy"; level, fig, row = 3, colormap = :viridis, maxrange = 1)
+function energy_contours(fig)
+    fig = heatmap_energies("contours_quarter", "energy"; fig, row = 1, normalize_val = mean_vol4,  colormap = :viridis,               plot_titles = plot_titles_quarter)
+    fig = heatmap_energies("contours_eight", "energy";   fig, row = 2, normalize_val = mean_vol8,  colormap = :viridis,               plot_titles = plot_titles_eight  )
+    fig = heatmap_energies("contours_sixteen", "energy"; fig, row = 3, normalize_val = mean_vol16, colormap = :viridis, maxtol = 0.2, plot_titles = plot_titles_sixteen)
     return fig
 end
 
@@ -592,6 +662,30 @@ stratif_ticks = ticks([1.0, 1.2, 1.4, 1.6, 1.8])
 Ω_eight_ticks   = ticks([0, 0.2, 0.4, 0.6])
 Ω_sixteen_ticks = ticks([0, 0.5, 1.0])
 
+include("deformation_radius.jl")
+
+function plot_deformation(fig)
+    r4 = 22.765
+    r8 = r4 / 2
+    r16 = r8 / 2
+    r50 = r8 / 50 * 8
+
+    ax = create_axis(fig, 1, 1, L"\text{average  }L_d", L"\text{days}", L"\text{kilometers}", 
+                     days_ticks, ticks([1, 2, 4, 8, 16, 32]), yscale = log2)
+    lines!(ax, def_time, def_radius, linewidth = 7, color = RGBf(0.8, 0.8, 0.8))
+    lines!(ax, [0, 100], [r4, r4], linewidth = 3, color = RGBf(0.5, 0.5, 0.5), linestyle = :dash)
+    text!(ax, 95, r4 * 0.85, text = L"\text{mean spacing at 0.25-degree resolution}", align = (:right, :center))
+    lines!(ax, [0, 100], [r8, r8], linewidth = 3, color = RGBf(0.5, 0.5, 0.5), linestyle = :dash)
+    text!(ax, 95, r8 * 0.85, text = L"\text{mean spacing at 0.125-degree resolution}", align = (:right, :center))
+    lines!(ax, [0, 100], [r16, r16], linewidth = 3, color = RGBf(0.5, 0.5, 0.5), linestyle = :dash)
+    text!(ax, 95, r16 * 0.85, text = L"\text{mean spacing at 0.0625-degree resolution}", align = (:right, :center))
+    lines!(ax, [0, 1600], [r50, r50], linewidth = 3, color = RGBf(0.5, 0.5, 0.5), linestyle = :dash)
+    text!(ax, 95, r50 * 0.85, text = L"\text{mean spacing at 0.02-degree resolution}", align = (:right, :center))
+    xlims!(ax, (0, 100))
+    ylims!(ax, (1, 32))
+    return fig
+end
+
 function plot_energies(fig)
     fig = plot_energies("_quarter"; fig, row = 1, legend = false, xlabel = "",             xticks = ([0, 25, 50, 75, 100], ["", "", "", "", ""]), yticks = E_quarter_ticks)
     fig = plot_energies("_eight";   fig, row = 2, legend = false, xlabel = "",             xticks = ([0, 25, 50, 75, 100], ["", "", "", "", ""]), yticks = E_eight_ticks)
@@ -600,10 +694,11 @@ function plot_energies(fig)
 end
 
 function plot_energy_stratif(fig)
-    fig = plot_all_three("energies"; fig, row = 1, column = 1, energy = true, title = L"\int_V KE dV / 10^{17}", 
+    fig = plot_all_three("energies"; fig, row = 1, column = 1, energy = true, title = L"\text{KE}", 
                                      normalize_val = 1e14, yticks = ticks([0.0, 2.5, 5.0, 7.5]), xticks = days_ticks, xlabel = L"\text{days}")
     fig = plot_all_three("stratif"; fig, normalize_val = 4e-6, row = 1, column = 2, energy = false, 
-                                    title = L"\int_V N^2 dV", xticks = days_ticks, yticks = stratif_ticks, xlabel = L"\text{days}")
+                                    title = L"N^2 / N^2_0", xticks = days_ticks, yticks = stratif_ticks, xlabel = L"\text{days}")
+    # fig = plot_stratif_RPE(; fig, row = 1, column = 3, xticks = days_ticks, yticks = stratif_ticks, xlabel = L"\text{days}")
     return fig
 end
 
