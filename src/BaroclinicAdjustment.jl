@@ -18,9 +18,10 @@ using KernelAbstractions: @kernel, @index
 using JLD2
 using Random
 
-include("horizontal_visc.jl")
-include("qg_leith_viscosity.jl")
+include("Parameterizations/Parameterizations.jl")
 include("outputs.jl")
+
+using .Parameterizations
 
 function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.75)
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)

@@ -1,36 +1,3 @@
-using Oceananigans
-using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
-using Oceananigans.TurbulenceClosures:
-        tapering_factorᶠᶜᶜ,
-        tapering_factorᶜᶠᶜ,
-        tapering_factorᶜᶜᶠ,
-        tapering_factor,
-        SmallSlopeIsopycnalTensor,
-        AbstractScalarDiffusivity,
-        ExplicitTimeDiscretization,
-        FluxTapering,
-        isopycnal_rotation_tensor_xz_ccf,
-        isopycnal_rotation_tensor_yz_ccf,
-        isopycnal_rotation_tensor_zz_ccf
-
-import Oceananigans.TurbulenceClosures:
-        calculate_diffusivities!,
-        DiffusivityFields,
-        viscosity, 
-        diffusivity,
-        diffusive_flux_x,
-        diffusive_flux_y, 
-        diffusive_flux_z
-
-using Oceananigans.Utils: launch!
-using Oceananigans.Coriolis: fᶠᶠᵃ
-using Oceananigans.Operators
-using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b 
-
-using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ
-
 struct QGLeith{FT, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
     C :: FT
     min_N² :: FT
@@ -80,10 +47,7 @@ end
     return ∂zqx, ∂zqy
 end
 
-"Return the filter width for a Leith Diffusivity on a general grid."
-@inline Δ²ᶜᶜᶜ(i, j, k, grid) =  2 * (1 / (1 / Δxᶜᶜᶜ(i, j, k, grid)^2 + 1 / Δyᶜᶜᶜ(i, j, k, grid)^2))
-
-@kernel function calculate_qgleith_viscosity!(ν, Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
+@kernel function _calculate_qgleith_viscosity!(ν, Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
     i, j, k = @index(Global, NTuple)
 
     ∂ζx, ∂ζy =  abs²_∇h_ζ(i, j, k, grid, coriolis, velocities)
@@ -124,7 +88,7 @@ end
     end
 end
 
-function calculate_diffusivities!(diffusivity_fields, closure::QGLeith, model)
+function compute_diffusivities!(diffusivity_fields, closure::QGLeith, model)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -136,7 +100,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::QGLeith, model)
             calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
 
     launch!(arch, grid, :xyz,
-            calculate_qgleith_viscosity!,
+            _calculate_qgleith_viscosity!,
             diffusivity_fields.νₑ, diffusivity_fields.Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
 
     return nothing

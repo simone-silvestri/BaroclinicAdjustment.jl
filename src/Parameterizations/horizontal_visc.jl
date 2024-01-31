@@ -5,35 +5,6 @@ using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, ℑxyᶜᶜᵃ, ζ₃�
 using Oceananigans.Operators: Δx, Δy
 using Oceananigans.Operators: ℑxyz
 
-@inline Dₛ(i, j, k, grid, u, v) = ∂xᶜᶜᶜ(i, j, k, grid, u) - ∂yᶜᶜᶜ(i, j, k, grid, v)
-@inline Dₜ(i, j, k, grid, u, v) = ∂xᶠᶠᶜ(i, j, k, grid, v) + ∂yᶠᶠᶜ(i, j, k, grid, u)
-@inline Δ²ᵃᵃᵃ(i, j, k, grid, lx, ly, lz) =  2 * (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2))
-
-@inline function νhb_smagorinski_final(i, j, k, grid, lx, ly, lz, clock, fields, p)
-
-   location = (lx, ly, lz)
-   from_Dₛ = (Center(), Center(), Center()) 
-   from_Dₜ = (Face(),   Face(),   Center()) 
-	
-   δ₁ = ℑxyz(i, j, k, grid, from_Dₛ, location, Dₛ, fields.u, fields.v)    
-   δ₂ = ℑxyz(i, j, k, grid, from_Dₜ, location, Dₛ, fields.u, fields.v)    
-
-   dynamic_visc = p.C * sqrt(δ₁^2 + δ₂^2)
-
-   A = p.Area(i, j, k, grid, lx, ly, lz)
-
-   return A^2 * dynamic_visc
-end
-
-function smagorinski_viscosity(formulation, FT::DataType = Float64; Cₛₘ = FT(0.45), Area = Δ²ᵃᵃᵃ)
-
-    @show C = (Cₛₘ / π)^2 / 8
-
-    return ScalarBiharmonicDiffusivity(formulation, FT; 
-                                       ν=νhb_smagorinski_final, discrete_form=true,  
-				                       parameters = (; C, Area))
-end
-
 @inline function νhb_leith_final(i, j, k, grid, lx, ly, lz, clock, fields, p)
     
     location = (lx, ly, lz)
