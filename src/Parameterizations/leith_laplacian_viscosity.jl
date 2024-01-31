@@ -28,12 +28,12 @@ DiffusivityFields(grid, tracer_names, bcs, ::Leith) =
     @inbounds ν[i, j, k] = (C * Δs / π)^(3) * sqrt(∂ζ² + ∂δ²) 
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::Leith, model)
+function compute_diffusivities!(diffusivity_fields, closure::Leith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             _calculate_leith_viscosity!,
             diffusivity_fields.νₑ, grid, closure, velocities)
 

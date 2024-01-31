@@ -30,7 +30,7 @@ using BaroclinicAdjustment.Diagnostics: VerticalVorticityOperation, KineticEnerg
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
-const mypath = "/orcd/nese/raffaele/001/ssilvest/"
+const mypath = "./"
 
 function compute_energy_diagnostics(f::Dict, iterations)
 
@@ -127,7 +127,7 @@ function compute_variances(f::Dict, fm, iterations)
     return (; u′², v′², w′², b′², u′v′, u′w′, v′w′, u′b′, v′b′, w′b′)
 end
 
-function compute_instability(fields, fm, iterations)
+function compute_instability(fields, fm)
 
     CUDA.@allowscalar begin
         b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = "../auxiliaries/fluc3.jld2", name = "u")
@@ -178,12 +178,14 @@ function write_down_fields(fields::Dict, newpath)
     return new_fields
 end
 
-function calculate_diagnostics(trailing_character = "_weaker", file_prefix = generate_names())
+function calculate_diagnostics(file_prefix = generate_names(), 
+                               trailing_character = "_eigth";
+                               arch = CPU())
     
     try 
         files = readdir(mypath * "/auxiliaries/")
         for file in files
-	   cmd = `rm $(mypath)auxiliaries/$(file)`
+	       cmd = `rm $(mypath)auxiliaries/$(file)`
            run(cmd)
         end
     catch
@@ -199,12 +201,9 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
 
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename) 
-	    
-            arch = GPU()
-
             @info "doing file " filename arch
             fields_previous = all_fieldtimeseries(filename; arch)
-	    fields = write_down_fields(fields_previous, mypath * "/auxiliaries/")            
+	        fields = write_down_fields(fields_previous, mypath * "/auxiliaries/")            
 
             lim = min(200, length(fields[:u].times))
 
@@ -214,7 +213,7 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             enstrophy = calculate_Ω(fields)
             GC.gc(true)
             CUDA.@allowscalar begin
-               N²        = calculate_N²(fields)
+               N²     = calculate_N²(fields)
             end
             GC.gc(true)
             spectra   = compute_spectra(fields, 50:lim)
@@ -223,16 +222,16 @@ function calculate_diagnostics(trailing_character = "_weaker", file_prefix = gen
             GC.gc(true)
             variance  = compute_variances(fields, averages, 50:lim)
             GC.gc(true)
-            instab    = compute_instability(fields, averages, 50:lim)
+            instab    = compute_instability(fields, averages)
             GC.gc(true)
 
-	    postprocess[:energies]  = move_on_cpu(energy)
-	    postprocess[:enstrophy] = move_on_cpu(enstrophy)
-	    postprocess[:stratif]   = move_on_cpu(N²)
-	    postprocess[:spectra]   = move_on_cpu(spectra)
-	    postprocess[:mean]      = move_on_cpu(averages)
-	    postprocess[:variance]  = move_on_cpu(variance)
-	    postprocess[:instab]    = move_on_cpu(instab)
+	        postprocess[:energies]  = move_on_cpu(energy)
+	        postprocess[:enstrophy] = move_on_cpu(enstrophy)
+	        postprocess[:stratif]   = move_on_cpu(N²)
+	        postprocess[:spectra]   = move_on_cpu(spectra)
+	        postprocess[:mean]      = move_on_cpu(averages)
+	        postprocess[:variance]  = move_on_cpu(variance)
+	        postprocess[:instab]    = move_on_cpu(instab)
 
             write_file!(prefix * trailing_character * "_postprocess.jld2", postprocess)
         end

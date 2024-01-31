@@ -23,7 +23,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::Smagorinsky) =
     @inbounds νₑ[i, j, k] = A * closure.Cₛ * sqrt(δ₁^2 + δ₂^2)
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::QGLeith, model; parameters)
+function compute_diffusivities!(diffusivity_fields, closure::Smagorinsky, model; parameters)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -42,7 +42,7 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, closure::QGLeith, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
-@inline diffusive_flux_y(i, j, k, grid, closure::QGLeith, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
-@inline diffusive_flux_z(i, j, k, grid, closure::QGLeith, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_x(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_y(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
+@inline diffusive_flux_z(i, j, k, grid, closure::Smagorinsky, diffusivities, ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index = zero(grid)
 

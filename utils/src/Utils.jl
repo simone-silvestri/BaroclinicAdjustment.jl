@@ -1,5 +1,7 @@
 module Utils
 
+export calculate_diagnostics
+
 using BaroclinicAdjustment
 using Oceananigans
 

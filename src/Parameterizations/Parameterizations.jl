@@ -58,6 +58,6 @@ include("qg_leith_viscosity.jl")
 include("geometric_bilaplacian.jl")
 include("smagorinsky_laplacian_viscosity.jl")
 include("leith_laplacian_viscosity.jl")
-include("OMp25_lateral_friction.jl")
+include("omp25_lateral_friction.jl")
 
 end
