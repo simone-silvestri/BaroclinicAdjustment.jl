@@ -55,6 +55,8 @@ using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, �
 
 include("qg_leith_viscosity.jl")
 include("horizontal_visc.jl")
+include("smagorinsky_laplacian_viscosity.jl")
+include("leith_laplacian_viscosity.jl")
 include("OMp25_lateral_friction.jl")
 
 end

@@ -1,5 +1,7 @@
 module BaroclinicAdjustment
 
+export TestCase
+
 using Printf
 using Oceananigans
 using Oceananigans.Units
@@ -22,6 +24,12 @@ include("Parameterizations/Parameterizations.jl")
 include("outputs.jl")
 
 using .Parameterizations
+
+struct TestCase{A, H, N}
+    a :: A # momentum advection scheme
+    h :: H # lateral friction
+    n :: N # name
+end
 
 function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.75)
     wave_speed = sqrt(gravitational_acceleration * grid.Lz)

@@ -12,7 +12,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::Smagorinsky) =
 @inline Dₛ(i, j, k, grid, u, v) = ∂xᶜᶜᶜ(i, j, k, grid, u) - ∂yᶜᶜᶜ(i, j, k, grid, v)
 @inline Dₜ(i, j, k, grid, u, v) = ∂xᶠᶠᶜ(i, j, k, grid, v) + ∂yᶠᶠᶜ(i, j, k, grid, u)
 
-@kenrel function _calculate_smagorinsky_viscosity!(νₑ, grid, closure, velocities)
+@kernel function _calculate_smagorinsky_viscosity!(νₑ, grid, closure, velocities)
     i, j, k = @index(Global, NTuple)
     u, v, w = velocities
 

@@ -1,4 +1,5 @@
 using Oceananigans.Coriolis: hack_sind
+using Statistics
 
 @inline function buoyancy_forcing(i, j, k, grid, clock, fields, p)
     @inbounds B  = p.B[1, j, k]
@@ -34,14 +35,23 @@ end
     return - 1 / f * (p.Lz + z) * ∂b∂x * ∂x∂φ * ∂φ∂y
 end
 
-function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; arch = GPU(), 
-                                                   horizontal_closure = nothing,
-                                                   momentum_advection = VectorInvariant(), 
-                                                   tracer_advection = WENO(FT),
-                                                   buoyancy_forcing_timescale = nothing,
-                                                   background_νz = 1e-4,
-                                                   φ₀ = - 50,
-                                                   stop_time = 200days)
+function baroclinic_adjustment_latlong(testcase::TestCase, resolution, trailing; kwargs...) 
+    name = testcase.n * trailing
+    momentum_advection = testcase.a
+    horizontal_closure = testcase.h
+
+    return baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure, kwargs...)
+end
+
+function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; 
+                                       arch = GPU(), 
+                                       horizontal_closure = nothing,
+                                       momentum_advection = VectorInvariant(), 
+                                       tracer_advection = WENO(FT; order = 7),
+                                       buoyancy_forcing_timescale = 50days,
+                                       background_νz = 1e-4,
+                                       φ₀ = - 50,
+                                       stop_time = 1000days)
     
     # Domain
     Lz = 1kilometers     # depth [m]

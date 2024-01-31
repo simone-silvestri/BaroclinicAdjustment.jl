@@ -7,15 +7,6 @@ Leith(FT::DataType = Float64; C=FT(1.0)) = Leith(C)
 DiffusivityFields(grid, tracer_names, bcs, ::Leith) = 
                 (; νₑ = CenterField(grid))
 
-
-@inline function abs²_∇h_δ(i, j, k, grid, fields)
-
-    ∂xδ = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, div_xyᶜᶜᶜ, fields.u, fields.v)
-    ∂yδ = ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, div_xyᶜᶜᶜ, fields.u, fields.v)
-    
-    return (∂xδ^2 + ∂yδ^2)
-end
-
 @kernel function _calculate_leith_viscosity!(ν, grid, closure, fields)
     i, j, k = @index(Global, NTuple)
 

@@ -1,4 +1,4 @@
-
+using Oceananigans.Operators
 struct OMp25Closure{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
     C₄ :: FT
     u₄ :: FT
@@ -58,7 +58,7 @@ function compute_diffusivities!(diffusivity_fields, closure::OMp25Closure, model
             calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
 
     launch!(arch, grid, parameters,
-            _calculate_OMp25Closure_viscosity!,
+            _calculate_omp25_viscosities!,
             diffusivity_fields.ν₂, diffusivity_fields.ν₄, 
             diffusivity_fields.Ld, grid, closure, velocities)
 
