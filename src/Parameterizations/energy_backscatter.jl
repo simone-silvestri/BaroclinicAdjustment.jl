@@ -62,7 +62,7 @@ function compute_diffusivities!(diffusivity_fields, closure::EBS, model; paramet
 
     launch!(arch, grid, parameters, 
             _advance_tke!, diffusivity_fields,
-                           grid, velocities, advection, 
+                           grid, model.clock, velocities, advection, 
                            closure, Δt)
 
     launch!(arch, grid, parameters,
