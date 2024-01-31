@@ -23,7 +23,7 @@ worst_upwinding = OnlySelfUpwinding(; cross_scheme = WENO(FT),
                                       δU_stencil  = DefaultStencil(),
                                       δV_stencil  = DefaultStencil(),
                                       δu²_stencil = DefaultStencil(),
-                                      δv²_stencil = DefaultStencil()),)                                
+                                      δv²_stencil = DefaultStencil())                               
 
 worst_weno = VectorInvariant(vorticity_scheme = WENO(; order = 9),
                             vorticity_stencil = DefaultStencil(),
