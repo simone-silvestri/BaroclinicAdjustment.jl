@@ -35,7 +35,7 @@ end
     return - 1 / f * (p.Lz + z) * ∂b∂x * ∂x∂φ * ∂φ∂y
 end
 
-function baroclinic_adjustment_latlong(testcase::TestCase, resolution, trailing; kwargs...) 
+function baroclinic_adjustment_latlong(testcase::TestCase, resolution, trailing = ""; kwargs...) 
     name = testcase.n * trailing
     momentum_advection = testcase.a
     horizontal_closure = testcase.h
