@@ -3,6 +3,7 @@ module Parameterizations
 export QGLeith
 export Smagorinsky
 export OMp25Closure
+export GeometricBilaplacian
 export Leith
 
 using Oceananigans
@@ -54,7 +55,7 @@ using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, �
 @inline Δ²ᶜᶜᶜ(i, j, k, grid) =  2 * (1 / (1 / Δxᶜᶜᶜ(i, j, k, grid)^2 + 1 / Δyᶜᶜᶜ(i, j, k, grid)^2))
 
 include("qg_leith_viscosity.jl")
-include("horizontal_visc.jl")
+include("geometric_bilaplacian.jl")
 include("smagorinsky_laplacian_viscosity.jl")
 include("leith_laplacian_viscosity.jl")
 include("OMp25_lateral_friction.jl")

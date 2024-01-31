@@ -2,7 +2,7 @@ using BaroclinicAdjustment
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Operators
-using Oceananigans.Advection: EnergyConserving, DefaultStencil
+using Oceananigans.Advection: EnergyConserving, DefaultStencil, OnlySelfUpwinding
 using BaroclinicAdjustment.Parameterizations
 using BaroclinicAdjustment: baroclinic_adjustment_latlong
 
@@ -19,7 +19,7 @@ best_weno = VectorInvariant(vorticity_scheme = WENO(; order = 9),
                              vertical_scheme = WENO(),
                            divergence_scheme = WENO())
 
-worst_upwinding = OnlySelfUpwinding(; cross_scheme = WENO(FT),
+worst_upwinding = OnlySelfUpwinding(; cross_scheme = WENO(),
                                       δU_stencil  = DefaultStencil(),
                                       δV_stencil  = DefaultStencil(),
                                       δu²_stencil = DefaultStencil(),
@@ -32,9 +32,9 @@ worst_weno = VectorInvariant(vorticity_scheme = WENO(; order = 9),
                                     upwinding = worst_upwinding)
 
 # Define test cases:
-
 qgleith_test    = TestCase(energy_conserving_advection, QGLeith(), "qgleith")
 omp25_test      = TestCase(energy_conserving_advection, OMp25Closure(), "omp25")
+biharmonic_test = TestCase(energy_conserving_advection, GeometricBilaplacian(), "bilaplacian")
 best_weno_test  = TestCase(best_weno,  nothing, "weno9pV")
 worst_weno_test = TestCase(worst_weno, nothing, "weno9pAllD")
 upwind_test     = TestCase(UpwindBiased(order = 3), nothing, "upwind")
