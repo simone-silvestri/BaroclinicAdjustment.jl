@@ -40,6 +40,8 @@ function baroclinic_adjustment_latlong(testcase::TestCase, resolution, trailing;
     momentum_advection = testcase.a
     horizontal_closure = testcase.h
 
+    @info "Running case $name with" momentum_advection horizontal_closure
+
     return baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure, kwargs...)
 end
 
