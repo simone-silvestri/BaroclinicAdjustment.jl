@@ -20,7 +20,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::OMp25Closure) =
 
 @kernel function _calculate_omp25_viscosities!(ν₂, ν₄, Ld, grid, closure, velocities)
     i, j, k = @index(Global, NTuple)
-    u, v, w = velocities
+    u, v, _ = velocities
     Δ = min(Δxᶜᶜᶜ(i, j, k, grid), Δyᶜᶜᶜ(i, j, k, grid))
 
     C₂ = closure.C₂

@@ -72,18 +72,18 @@ function testcases(FT)
         for Upwind in (CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding)
             for vorticity_stencil in (VelocityStencil(), DefaultStencil())
                 if Upwind == OnlySelfUpwinding
-                push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order), 
-                                                           vorticity_stencil,
-                                                           vertical_scheme = WENO(FT),
- 					                   divergence_scheme = WENO(FT),
-                                                           upwinding = Upwind(; cross_scheme = WENO(FT),
-                                                           δU_stencil = FunctionStencil(Oceananigans.Advection.U_smoothness),
-                                                           δV_stencil = FunctionStencil(Oceananigans.Advection.V_smoothness) 
+                    push!(advection_schemes, VectorInvariant(; vorticity_scheme = WENO(FT; order), 
+                                                               vorticity_stencil,
+                                                               vertical_scheme = WENO(FT),
+ 					                                           divergence_scheme = WENO(FT),
+                                                               upwinding = Upwind(; cross_scheme = WENO(FT),
+                                                               δU_stencil = FunctionStencil(Oceananigans.Advection.U_smoothness),
+                                                               δV_stencil = FunctionStencil(Oceananigans.Advection.V_smoothness) 
 							   )))
                 else
-		push!(advection_schemes, nothing)
-		end
-		push!(horizontal_closures, nothing)
+		            push!(advection_schemes, nothing)
+		        end
+		        push!(horizontal_closures, nothing)
                 push!(names, getname(advection_schemes[end]))
             end
         end
@@ -122,8 +122,6 @@ function testcases(FT)
 end
 
 include("baroclinic_adjustment_latlon.jl")
-include("baroclinic_double_gyre.jl")
-include("restoring_baroclinic_adjustment_latlon.jl")
 include("run_simulations.jl")
 include("Diagnostics/Diagnostics.jl")
 

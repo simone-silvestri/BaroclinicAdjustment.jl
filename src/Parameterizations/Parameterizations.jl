@@ -2,6 +2,8 @@ module Parameterizations
 
 export QGLeith
 export Smagorinsky
+export OMp25Closure
+export Leith
 
 using Oceananigans
 using Oceananigans
