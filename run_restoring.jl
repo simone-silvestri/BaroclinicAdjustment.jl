@@ -4,14 +4,13 @@ using Oceananigans.Units
 using Oceananigans.Operators
 using Oceananigans.Advection: EnergyConserving, DefaultStencil
 using BaroclinicAdjustment.Parameterizations
+using BaroclinicAdjustment: baroclinic_adjustment_latlong
 
 using CUDA
 CUDA.device!(1)
 
 stop_time = 1000days
 buoyancy_forcing_timescale = 50days
-
-#=
 
 energy_conserving_advection = VectorInvariant(vorticity_scheme = EnergyConserving(), 
                                                vertical_scheme = EnergyConserving())
@@ -42,36 +41,14 @@ upwind_test     = TestCase(UpwindBiased(order = 3), nothing, "upwind")
 
 tests = (qgleith_test, omp25_test, best_weno_test, worst_weno_test, upwind_test)
 
-for resolution, trailing_character in zip((1/8, 1/16, 1/32), ("_eight", "_sixteen", "_thirtytwo"))
+resolutions = (1/8, 1/16, 1/32)
+resnames    = ("_eight", "_sixteen", "_thirtytwo")
+
+for (resolution, trailing_character) in zip(resolutions, resnames)
    for test in tests    
-      simulation = BaroclinicAdjustment.baroclinic_adjustment_latlong(test, resolution, trailing_character; 
-                                                                      arch = GPU(),
-                                                                      stop_time, 
-                                                                      tracer_advection = WENO(order = 7),
-                                                                      buoyancy_forcing_timescale)
+      simulation = baroclinic_adjustment_latlong(test, resolution, trailing_character; arch = GPU())
       run!(simulation)
    end
 end
 
-
-
-=#
-
-advs  = [VectorInvariant(vorticity_scheme = EnergyConserving(), 
-                          vertical_scheme = EnergyConserving())]
-hors  = [OMp25Closure()]
-
-names = ["omp25"]
-
-for (res, trl) in zip((1/8, 1/16, 1/32), ("_eight", "_sixteen", "_thirtytwo", )), 
-   (momentum_advection, horizontal_closure, name) in zip(advs, hors, names)
-    
-   @show name    
-   simulation = BaroclinicAdjustment.baroclinic_adjustment_latlong(res, name * trl; 
-                                                                   arch = GPU(), momentum_advection,
-                                                                   stop_time, horizontal_closure,
-                                                                   tracer_advection = WENO(order = 7),
-                                                                   buoyancy_forcing_timescale)
-   run!(simulation)
-end
 
