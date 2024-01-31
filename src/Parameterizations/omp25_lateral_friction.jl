@@ -16,8 +16,6 @@ DiffusivityFields(grid, tracer_names, bcs, ::OMp25Closure) =
                    ν₄ = CenterField(grid), 
                    Ld = Field{Center, Center, Nothing}(grid))
 
-@inline Δ̃ᶜᶜᶜ(i, j, k, grid) = sqrt((Δxᶜᶜᶜ(i, j, k, grid)^2 + Δyᶜᶜᶜ(i, j, k, grid)^2)/2)
-
 @kernel function _calculate_omp25_viscosities!(ν₂, ν₄, Ld, grid, closure, velocities)
     i, j, k = @index(Global, NTuple)
     u, v, _ = velocities
@@ -55,7 +53,8 @@ function compute_diffusivities!(diffusivity_fields, closure::OMp25Closure, model
     coriolis = model.coriolis
 
     launch!(arch, grid, :xy, 
-            calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
+            _calculate_deformation_radius!, diffusivity_fields.Ld, 
+            grid, tracers, buoyancy, coriolis)
 
     launch!(arch, grid, parameters,
             _calculate_omp25_viscosities!,

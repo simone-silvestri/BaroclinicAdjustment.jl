@@ -77,7 +77,7 @@ end
 @inline _deformation_radius(i, j, k, grid, C, buoyancy, coriolis) = sqrt(max(0, ∂z_b(i, j, k, grid, buoyancy, C))) / π /
                                                                          abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis))
 
-@kernel function calculate_deformation_radius!(Ld, grid, tracers, buoyancy, coriolis)
+@kernel function _calculate_deformation_radius!(Ld, grid, tracers, buoyancy, coriolis)
     i, j = @index(Global, NTuple)
 
     @inbounds begin
@@ -97,7 +97,7 @@ function compute_diffusivities!(diffusivity_fields, closure::QGLeith, model)
     coriolis = model.coriolis
 
     launch!(arch, grid, :xy, 
-            calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
+            _calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
 
     launch!(arch, grid, :xyz,
             _calculate_qgleith_viscosity!,

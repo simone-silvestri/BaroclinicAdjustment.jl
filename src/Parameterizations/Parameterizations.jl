@@ -5,6 +5,7 @@ export Smagorinsky
 export OMp25Closure
 export GeometricBilaplacian
 export Leith
+export EnergyBackScatter
 
 using Oceananigans
 using Oceananigans
@@ -54,10 +55,14 @@ using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, �
 "Return the filter width for a Leith Diffusivity on a general grid."
 @inline Δ²ᶜᶜᶜ(i, j, k, grid) =  2 * (1 / (1 / Δxᶜᶜᶜ(i, j, k, grid)^2 + 1 / Δyᶜᶜᶜ(i, j, k, grid)^2))
 
+"The averaged filter width"
+@inline Δ̃ᶜᶜᶜ(i, j, k, grid) = sqrt((Δxᶜᶜᶜ(i, j, k, grid)^2 + Δyᶜᶜᶜ(i, j, k, grid)^2)/2)
+
 include("qg_leith_viscosity.jl")
 include("geometric_bilaplacian.jl")
 include("smagorinsky_laplacian_viscosity.jl")
 include("leith_laplacian_viscosity.jl")
 include("omp25_lateral_friction.jl")
+include("energy_backscatter.jl")
 
 end

@@ -1,7 +1,8 @@
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Operators: Δx, Δy
+using Oceananigans.Units
 
-GeometricBilaplacian(FT; λ = 5days) = 
+GeometricBilaplacian(FT = Float64; λ = 5days) = 
     HorizontalScalarBiharmonicDiffusivity(FT; 
                                           ν=geometric_νhb, discrete_form=true,  
                                           parameters = λ)
