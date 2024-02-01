@@ -1,6 +1,5 @@
 using CairoMakie
 using BaroclinicAdjustment
-using BaroclinicAdjustment: add_trailing_characters
 using BaroclinicAdjustment.Diagnostics
 using BaroclinicAdjustment.Diagnostics: VerticalVorticity, KineticEnergy, DeformationRadius
 
