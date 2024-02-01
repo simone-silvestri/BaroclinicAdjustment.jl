@@ -200,13 +200,13 @@ function calculate_diagnostics(file_prefix = generate_names(),
     
     if !(auxiliary_path isa Nothing)
         try 
-            files = readdir(mypath * "/auxiliaries/")
+            files = readdir(auxiliary_path)
             for file in files
-	           cmd = `rm $(mypath)auxiliaries/$(file)`
+	           cmd = `rm $(auxiliary_path)/$(file)`
                run(cmd)
             end
         catch
-            cmd = `mkdir $(mypath)auxiliaries`
+            cmd = `mkdir $(auxiliary_path)`
             run(cmd)
         end
     end
