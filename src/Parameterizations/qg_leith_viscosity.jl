@@ -88,7 +88,7 @@ end
     end
 end
 
-function compute_diffusivities!(diffusivity_fields, closure::QGLeith, model)
+function compute_diffusivities!(diffusivity_fields, closure::QGLeith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -99,7 +99,7 @@ function compute_diffusivities!(diffusivity_fields, closure::QGLeith, model)
     launch!(arch, grid, :xy, 
             _calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             _calculate_qgleith_viscosity!,
             diffusivity_fields.νₑ, diffusivity_fields.Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
 
