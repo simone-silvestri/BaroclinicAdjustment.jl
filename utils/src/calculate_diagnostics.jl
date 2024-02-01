@@ -195,7 +195,8 @@ end
 function calculate_diagnostics(file_prefix = generate_names(), 
                                trailing_character = "_eigth";
                                arch = CPU(),
-                               auxiliary_path = nothing)
+                               auxiliary_path = nothing,
+                               src_path = nothing)
     
     if !(auxiliary_path isa Nothing)
         try 
@@ -220,7 +221,7 @@ function calculate_diagnostics(file_prefix = generate_names(),
         if isfile(filename) 
             @info "doing file " filename arch
             fields_previous = all_fieldtimeseries(filename; arch)
-	        fields = write_down_fields(fields_previous; path = auxiliary_path)            
+	        fields = write_down_fields(fields_previous; path = src_path)            
 
             lim = min(200, length(fields[:u].times))
 
