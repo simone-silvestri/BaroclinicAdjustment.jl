@@ -40,7 +40,7 @@ function propagate(fields...; func, path = nothing, name = nothing)
 
     field1 = Field(operation)
 
-    if !(path isa Nothing) && !(name isa Nothing)
+    if !(path isa Nothing)
         field_output = FieldTimeSeries{location(field1)...}(fields[1].grid, fields[1].times; path, name, backend = OnDisk(), indices = field1.indices)
     else    
         field_output = FieldTimeSeries{location(field1)...}(fields[1].grid, fields[1].times, indices = field1.indices)

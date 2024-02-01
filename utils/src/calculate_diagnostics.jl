@@ -29,13 +29,11 @@ using BaroclinicAdjustment.Diagnostics: VerticalVorticityOperation, KineticEnerg
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
-const mypath = "/storage4/simone/BaroclinicAdjustment.jl/"
-
-function compute_energy_diagnostics(f::Dict, iterations)
+function compute_energy_diagnostics(f::Dict, iterations; path = auxiliary_path)      
 
     KE = calculate_KE(f)
 
-    Etimeseries = compute_energy_timeseries(f)
+    Etimeseries = compute_energy_timeseries(f; path)
 
     E = FieldTimeSeries{Face, Center, Center}(f[:u].grid, f[:u].times[iterations])
 
@@ -52,14 +50,18 @@ function compute_energy_diagnostics(f::Dict, iterations)
     return (; KE, EKEavg, Etimeseries)
 end
 
-function compute_energy_timeseries(f)
-    ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = mypath * "auxiliaries/mean_val.jld2", name = "u")
-    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = mypath * "auxiliaries/mean_val.jld2", name = "v")
-    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = mypath * "auxiliaries/mean_val.jld2", name = "b")
+function compute_energy_timeseries(f; path = nothing)
 
-    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc_val.jld2", name = "u")
-    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc_val.jld2", name = "v")
-    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc_val.jld2", name = "b")
+    meanpath = path isa Nothing ? nothing : path * "mean_val.jld2"
+    flucpath = path isa Nothing ? nothing : path * "fluc_val.jld2"
+
+    ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = meanpath, name = "u")
+    v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = meanpath, name = "v")
+    b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = meanpath, name = "b")
+
+    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = flucpath, name = "u")
+    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = flucpath, name = "v")
+    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = flucpath, name = "b")
 
     B = propagate(f[:b]; func = x -> mean(x, dims = 2))
 
@@ -90,12 +92,15 @@ function compute_zonal_mean(f::Dict, iterations)
     return (; U, V, W, B, B★, ū, v̄, w̄, b̄)
 end
 
-function compute_variances(f::Dict, fm, iterations)
+function compute_variances(f::Dict, fm, iterations; path = nothing)
+
+    flucpath = path isa Nothing ? nothing : path * "fluc2_val.jld2"
+
     CUDA.@allowscalar begin
-        u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc2.jld2", name = "u") 
-        v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc2.jld2", name = "v")
-        w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc2.jld2", name = "w")
-        b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc2.jld2", name = "b")
+        u′ = propagate(f[:u], fm.U; func = (x, X) -> x - X, path = flucpath, name = "u") 
+        v′ = propagate(f[:v], fm.V; func = (x, X) -> x - X, path = flucpath, name = "v")
+        w′ = propagate(f[:w], fm.W; func = (x, X) -> x - X, path = flucpath, name = "w")
+        b′ = propagate(f[:b], fm.B; func = (x, X) -> x - X, path = flucpath, name = "b")
     end
     
     u′² = time_average(propagate(u′; func = x -> x^2), iterations) 
@@ -126,12 +131,14 @@ function compute_variances(f::Dict, fm, iterations)
     return (; u′², v′², w′², b′², u′v′, u′w′, v′w′, u′b′, v′b′, w′b′)
 end
 
-function compute_instability(fields, fm)
+function compute_instability(fields, fm; path = nothing)
+
+    flucpath = path isa Nothing ? nothing : path * "fluc3_val.jld2" 
 
     CUDA.@allowscalar begin
-        b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc3.jld2", name = "u")
-        u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc3.jld2", name = "v")
-        v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = mypath * "auxiliaries/fluc3.jld2", name = "b")
+        b′ = propagate(fields[:b], fm.b̄; func = (x, X) -> x - X, path = flucpath, name = "u")
+        u′ = propagate(fields[:u], fm.ū; func = (x, X) -> x - X, path = flucpath, name = "v")
+        v′ = propagate(fields[:v], fm.v̄; func = (x, X) -> x - X, path = flucpath, name = "b")
     end
     
     u′b′ = time_average(propagate(u′, b′; func = (x, y) -> x * y))
@@ -140,16 +147,24 @@ function compute_instability(fields, fm)
     return (; u′b′, v′b′)
 end
 
-function write_down_fields(fields::Dict, newpath)
+function write_down_fields(fields::Dict; path = nothing)
     new_fields = Dict()
     grid  = fields[:u].grid
     times = fields[:u].times
-    path = fields[:u].path
 
-    u = FieldTimeSeries{Face, Center, Center}(grid,   times; backend = OnDisk(), path = newpath * path, name = "u")
-    v = FieldTimeSeries{Center, Face, Center}(grid,   times; backend = OnDisk(), path = newpath * path, name = "v")
-    w = FieldTimeSeries{Center, Center, Face}(grid,   times; backend = OnDisk(), path = newpath * path, name = "w")
-    b = FieldTimeSeries{Center, Center, Center}(grid, times; backend = OnDisk(), path = newpath * path, name = "b") 
+    path = path isa Nothing ? nothing : path * "all_values.jld2" 
+    
+    if path isa Nothing
+        u = FieldTimeSeries{Face, Center, Center}(grid,   times)
+        v = FieldTimeSeries{Center, Face, Center}(grid,   times)
+        w = FieldTimeSeries{Center, Center, Face}(grid,   times)
+        b = FieldTimeSeries{Center, Center, Center}(grid, times) 
+    else
+        u = FieldTimeSeries{Face, Center, Center}(grid,   times; backend = OnDisk(), path, name = "u")
+        v = FieldTimeSeries{Center, Face, Center}(grid,   times; backend = OnDisk(), path, name = "v")
+        w = FieldTimeSeries{Center, Center, Face}(grid,   times; backend = OnDisk(), path, name = "w")
+        b = FieldTimeSeries{Center, Center, Center}(grid, times; backend = OnDisk(), path, name = "b") 
+    end
 
     utmp =  XFaceField(on_architecture(CPU(), grid))
     vtmp =  YFaceField(on_architecture(CPU(), grid))
@@ -179,17 +194,20 @@ end
 
 function calculate_diagnostics(file_prefix = generate_names(), 
                                trailing_character = "_eigth";
-                               arch = CPU())
+                               arch = CPU(),
+                               auxiliary_path = nothing)
     
-    try 
-        files = readdir(mypath * "/auxiliaries/")
-        for file in files
-	       cmd = `rm $(mypath)auxiliaries/$(file)`
-           run(cmd)
+    if !(auxiliary_path isa Nothing)
+        try 
+            files = readdir(mypath * "/auxiliaries/")
+            for file in files
+	           cmd = `rm $(mypath)auxiliaries/$(file)`
+               run(cmd)
+            end
+        catch
+            cmd = `mkdir $(mypath)auxiliaries`
+            run(cmd)
         end
-    catch
-        cmd = `mkdir $(mypath)auxiliaries`
-        run(cmd)
     end
 
     @show file_prefix
@@ -202,12 +220,12 @@ function calculate_diagnostics(file_prefix = generate_names(),
         if isfile(filename) 
             @info "doing file " filename arch
             fields_previous = all_fieldtimeseries(filename; arch)
-	    fields = write_down_fields(fields_previous, mypath * "/auxiliaries/")            
+	        fields = write_down_fields(fields_previous; path = auxiliary_path)            
 
             lim = min(200, length(fields[:u].times))
 
             GC.gc(true)
-            energy    = compute_energy_diagnostics(fields, 50:lim)
+            energy    = compute_energy_diagnostics(fields, 50:lim; path = auxiliary_path)      
             GC.gc(true)
             enstrophy = calculate_Ω(fields)
             GC.gc(true)
@@ -219,9 +237,9 @@ function calculate_diagnostics(file_prefix = generate_names(),
             GC.gc(true)
             averages = compute_zonal_mean(fields, 50:lim)
             GC.gc(true)
-            variance = compute_variances(fields, averages, 50:lim)
+            variance = compute_variances(fields, averages, 50:lim; path = auxiliary_path)      
             GC.gc(true)
-            instab   = compute_instability(fields, averages)
+            instab   = compute_instability(fields, averages; path = auxiliary_path)      
             GC.gc(true)
 
 	        postprocess[:energies]  = move_on_cpu(energy)
