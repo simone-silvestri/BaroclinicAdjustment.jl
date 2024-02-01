@@ -269,8 +269,7 @@ move_on_cpu(fields::NamedTuple) =
     NamedTuple{propertynames(fields)}(map(move_on_cpu, fields))
 
 move_on_cpu(fields::Tuple) = map(move_on_cpu, fields)
-move_on_cpu(field::AbstractField)   = move_on_cpu(field, architecture(field))
-move_on_cpu(field::FieldTimeSeries) = move_on_cpu(field, architecture(field))
+move_on_cpu(field::AbstractField) = move_on_cpu(field, architecture(field))
 move_on_cpu(field, ::CPU) = field
 
 function move_on_cpu(fields::FieldTimeSeries) 
