@@ -90,7 +90,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                coriolis,
                R = grid.radius)
 
-    free_surface = SplitExplicitFreeSurface(FT; grid, cfl = 0.75)
+    free_surface = SplitExplicitFreeSurface(FT; grid, cfl = 0.75, fixed_Δt = 20minutes)
     @info "Building a model..."
 
     if !isnothing(buoyancy_forcing_timescale)
@@ -129,7 +129,8 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt = 20minutes, min_Δt = 15)
+    max_Δt = resolution < 1/20 ? 8minutes : 20minutes
+    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt, min_Δt = 15)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     function update_mean_values(sim)
