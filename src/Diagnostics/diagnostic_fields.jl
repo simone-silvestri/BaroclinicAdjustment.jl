@@ -52,11 +52,11 @@ function StratificationOperation(b)
     return N2_op
 end
 
-@inline N²ᶠᶠᶠ(i, j, k, grid, b) = max(1e-10, ℑxyᶠᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, b))
-@inline N²ᶜᶜᶠ(i, j, k, grid, b) = max(1e-10, ∂zᶜᶜᶠ(i, j, k, grid, b))
+@inline N²ᶠᶠᶠ(i, j, k, grid, b) = ℑxyᶠᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, b)
 
-@inline b_term(i, j, k, grid, b) = fᶠᶠᵃ(i, j, k, grid, HydrostaticSphericalCoriolis()) / N²ᶠᶠᶠ(i, j, k, grid, b) * ℑxyᶠᶠᵃ(i, j, k, grid, b)
-@inline pvᶠᶠᶜ(i, j, k, grid, u, v, b) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) + ∂zᶠᶠᶜ(i, j, k, grid, b_term, b) 
+@inline b_term(i, j, k, grid, b) =  ℑxyᶠᶠᵃ(i, j, k, grid, b)
+@inline pvᶠᶠᶜ(i, j, k, grid, u, v, b) = (ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) + 
+                                          fᶠᶠᵃ(i, j, k, grid, HydrostaticSphericalCoriolis())) * ℑzᵃᵃᶜ(i, j, k, grid, N²ᶠᶠᶠ, b) 
 
 function PotentialVorticityOperation(fields::NamedTuple)
 
