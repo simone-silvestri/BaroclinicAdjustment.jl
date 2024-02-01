@@ -160,8 +160,11 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     end
 
     simulation.callbacks[:print_progress]     = Callback(print_progress,     IterationInterval(20))
-    simulation.callbacks[:update_mean_values] = Callback(update_mean_values, IterationInterval(10))
-
+    
+    if !isnothing(buoyancy_forcing_timescale)
+        simulation.callbacks[:update_mean_values] = Callback(update_mean_values, IterationInterval(10))
+    end
+    
     reduced_outputs!(simulation, filename)
 
     return simulation
