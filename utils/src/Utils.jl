@@ -39,34 +39,6 @@ function write_file!(name, var)
     return nothing
 end
 
-function generate_names()
-
-    names = []
-
-    # First five are the "Explicit" LES closures
-    push!(names, "bilap", "leith", "lapleith", "smag", "qgleith")
-
-    # Next twelve are the "Implicit" LES closures
-    for order in [5, 9]
-        for Upwind in (CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding)
-            for vorticity_stencil in (VelocityStencil(), DefaultStencil())
-                adv = VectorInvariant(; vorticity_scheme = WENO(; order), 
-                                                           vorticity_stencil,
-                                                           vertical_scheme = WENO(), 
-                                                           upwinding= Upwind(cross_scheme = WENO()))
-                push!(names, getname(adv))
-            end
-        end
-    end
-
-    # Last one are the "Strays" (Incorrect Stencils, Flux Form, Multi-Dimensional)
-    push!(names, "weno5pAllD", "weno9pAllD")
-    push!(names, "weno5Fl", "weno9Fl")
-    push!(names, "weno5MD", "weno9MD")
-
-    return names
-end
-
 include("calculate_diagnostics.jl")
 include("surface_videos.jl")
 
