@@ -53,6 +53,7 @@ function StratificationOperation(b)
 end
 
 @inline N²ᶠᶠᶠ(i, j, k, grid, b) = ℑxyᶠᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, b)
+@inline N²ᶜᶜᶠ(i, j, k, grid, b) = ℑxyᶠᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, b)
 
 @inline b_term(i, j, k, grid, b) =  ℑxyᶠᶠᵃ(i, j, k, grid, b)
 @inline pvᶠᶠᶜ(i, j, k, grid, u, v, b) = (ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) + 
