@@ -41,7 +41,7 @@ function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.75)
     return  Base.Int(ceil(2 * Δt / (CFL / wave_speed * Δ)))
 end
 
-include("baroclinic_adjustment_latlon.jl")
+include("baroclinic_adjustment.jl")
 include("Diagnostics/Diagnostics.jl")
 
 using .Diagnostics
