@@ -192,7 +192,9 @@ function write_down_fields(fields::Dict; path = nothing)
     return new_fields
 end
 
-function calculate_diagnostics(file_prefix = generate_names(), 
+add_trailing_characters(string, trailing) = string * trailing
+
+function calculate_diagnostics(file_prefix = [], 
                                trailing_character = "_eigth";
                                arch = CPU(),
                                auxiliary_path = nothing,
