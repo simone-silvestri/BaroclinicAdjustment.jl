@@ -2,7 +2,7 @@ struct Leith{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, Horizo
     C :: FT
 end
 
-Leith(FT::DataType = Float64; C=FT(1.0)) = Leith(C) 
+Leith(FT::DataType = Float64; C=FT(2.0)) = Leith(C) 
 
 DiffusivityFields(grid, tracer_names, bcs, ::Leith) = 
                 (; νₑ = CenterField(grid))
@@ -11,7 +11,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::Leith) =
     i, j, k = @index(Global, NTuple)
 
     ∂ζx = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ζ₃ᶠᶠᶜ, fields.u, fields.v)
-    ∂yζ = ℑxᶜᵃᵃ(i, j, k, grid, ∂yᶠᶜᶜ, ζ₃ᶠᶠᶜ, fields.u, fields.v)
+    ∂ζy = ℑxᶜᵃᵃ(i, j, k, grid, ∂yᶠᶜᶜ, ζ₃ᶠᶠᶜ, fields.u, fields.v)
     
     ∂xδ = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, div_xyᶜᶜᶜ, fields.u, fields.v)
     ∂yδ = ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, div_xyᶜᶜᶜ, fields.u, fields.v)
