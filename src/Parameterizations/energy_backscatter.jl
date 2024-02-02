@@ -94,8 +94,10 @@ using Oceananigans.Operators
     εˣ = ℑxᶜᵃᵃ(i, j, k, grid, ε_x, u, closure, diffusivities, clock, velocities, nothing)
     εʸ = ℑxᶜᵃᵃ(i, j, k, grid, ε_y, v, closure, diffusivities, clock, velocities, nothing)
 
+    bottom_friction = ifelse(k == 1, Cᴰ * e[i, j, k], zero(grid))
+
     Gⁿ = - div_Uc(i, j, k, grid, advection, velocities, e) 
-         - Cᴰ * e[i, j, k] + (εˣ + εʸ) / 2
+         - bottom_friction + (εˣ + εʸ) / 2
 
     @inbounds e[i, j, k] += Δt * (α * Gⁿ - β * G⁻[i, j, k])
     @inbounds G⁻[i, j, k] = Gⁿ

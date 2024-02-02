@@ -2,7 +2,6 @@ using Statistics: mean
 using Oceananigans
 using Oceananigans.BoundaryConditions
 using BaroclinicAdjustment
-using BaroclinicAdjustment: getname
 using BaroclinicAdjustment.Diagnostics
 using BaroclinicAdjustment.Diagnostics: compute_rpe_density, 
                                         calculate_KE,
