@@ -35,25 +35,25 @@ end
     return - 1 / f * (p.Lz + z) * ∂b∂x * ∂x∂φ * ∂φ∂y
 end
 
-function baroclinic_adjustment_latlong(testcase::TestCase, resolution, trailing = ""; kwargs...) 
+function baroclinic_adjustment_simulation(testcase::TestCase, resolution, trailing = ""; kwargs...) 
     name = testcase.n * trailing
     momentum_advection = testcase.a
     horizontal_closure = testcase.h
 
     @info "Running case $name with" momentum_advection horizontal_closure
 
-    return baroclinic_adjustment_latlong(resolution, name; momentum_advection, horizontal_closure, kwargs...)
+    return baroclinic_adjustment_simulation(resolution, name; momentum_advection, horizontal_closure, kwargs...)
 end
 
-function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; 
-                                       arch = GPU(), 
-                                       horizontal_closure = nothing,
-                                       momentum_advection = VectorInvariant(), 
-                                       tracer_advection = WENO(FT; order = 7),
-                                       buoyancy_forcing_timescale = 50days,
-                                       background_νz = 1e-4,
-                                       φ₀ = - 50,
-                                       stop_time = 1000days)
+function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = Float64; 
+                                          arch = GPU(), 
+                                          horizontal_closure = nothing,
+                                          momentum_advection = VectorInvariant(), 
+                                          tracer_advection = WENO(FT; order = 7),
+                                          buoyancy_forcing_timescale = 50days,
+                                          background_νz = 1e-4,
+                                          φ₀ = - 50,
+                                          stop_time = 1000days)
     
     # Domain
     Lz = 1kilometers     # depth [m]
@@ -145,12 +145,8 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
 
     function print_progress(sim)
 
-        e = try 
-            maximum(sim.model.diffusivity_fields.e)
-        catch 
-            0.0
-        end
-
+        e = maximum(sim.model.diffusivity_fields[2].e)
+        
         @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, e: %6.3e, next Δt: %s\n",
                 100 * (sim.model.clock.time / sim.stop_time),
                 sim.model.clock.iteration,
