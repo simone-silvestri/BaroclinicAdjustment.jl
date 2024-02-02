@@ -144,14 +144,21 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     wall_clock = [time_ns()]
 
     function print_progress(sim)
-        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
+
+        e = try 
+            maximum(sim.model.diffusivity_fields.e)
+        catch 
+            0.0
+        end
+
+        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, e: %6.3, next Δt: %s\n",
                 100 * (sim.model.clock.time / sim.stop_time),
                 sim.model.clock.iteration,
                 prettytime(sim.model.clock.time),
                 prettytime(1e-9 * (time_ns() - wall_clock[1])),
                 maximum(abs, sim.model.velocities.u),
                 maximum(abs, sim.model.velocities.v),
-                maximum(abs, sim.model.velocities.w),
+                maximum(abs, sim.model.velocities.w), e,
                 prettytime(sim.Δt))
 
         wall_clock[1] = time_ns()
