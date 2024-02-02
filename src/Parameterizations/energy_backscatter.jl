@@ -1,3 +1,4 @@
+using Oceananigans.Units
 using Oceananigans.Operators
 using Oceananigans.Advection: div_Uc
 using Oceananigans.Coriolis: fᶠᶠᵃ
@@ -13,12 +14,17 @@ struct EnergyBackScatter{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretiza
     C₂ :: FT
     Cᴰ :: FT
     Uᵇ :: FT
+    τ  :: FT
 end
 
 const EBS = EnergyBackScatter
 
-EnergyBackScatter(FT::DataType = Float64; C₄ = FT(0.06), C₂ = FT(-0.6), Cᴰ = FT(3e-2), Uᵇ = FT(0.1)) = 
-        EnergyBackScatter(C₄, C₂, Cᴰ, Uᵇ) 
+EnergyBackScatter(FT::DataType = Float64; 
+                  C₄ = FT(0.06), 
+                  C₂ = FT(-0.6), 
+                  Cᴰ = FT(3e-2),
+                  Uᵇ = FT(0.1),
+                  τ  = FT(1 / 45days)) = EnergyBackScatter(C₄, C₂, Cᴰ, Uᵇ, τ) 
 
 DiffusivityFields(grid, tracer_names, bcs, ::EBS) = 
                     (; ν₂ = CenterField(grid),
@@ -44,6 +50,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::EBS) =
     D_abs = sqrt(δ₁^2 + δ₂^2)
     
     C₄ = closure.C₄
+    τ  = closure.τ
     u⁺ = @inbounds sqrt(2 * max(0, e[i, j, 1]))
     Lᵦ = sqrt(u⁺) * sqrt(1 / abs(∂yᶠᶜᶜ(i, j, k, grid, fᶠᶠᵃ, coriolis)))
     
@@ -60,7 +67,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::EBS) =
     bound = @inbounds 2 * e[i, j, 1] / sqrt(∂ˣu^2 + 0.5 * (∂ˣv + ∂ʸu)^2 + ∂ʸv^2)
 
     @inbounds ν₂[i, j, k] = max(ν₂_unbounded, - bound)
-    @inbounds ν₄[i, j, k] = C₄ * Δ^4 * D_abs
+    @inbounds ν₄[i, j, k] = (C₄ * D_abs + 1 / τ) * Δ^4 
 end
 
 function compute_diffusivities!(diffusivity_fields, closure::EBS, model; parameters = :xyz)
