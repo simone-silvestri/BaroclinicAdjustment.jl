@@ -67,7 +67,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::EBS) =
     bound = @inbounds 2 * e[i, j, 1] / sqrt(∂ˣu^2 + 0.5 * (∂ˣv + ∂ʸu)^2 + ∂ʸv^2)
 
     @inbounds ν₂[i, j, k] = max(ν₂_unbounded, - bound)
-    @inbounds ν₄[i, j, k] = (C₄ * D_abs + 1 / τ) * Δ^4 
+    @inbounds ν₄[i, j, k] = (C₄ * D_abs + τ) * Δ^4 
 end
 
 function compute_diffusivities!(diffusivity_fields, closure::EBS, model; parameters = :xyz)
