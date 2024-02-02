@@ -16,7 +16,7 @@ end
 
 const EBS = EnergyBackScatter
 
-EnergyBackScatter(FT::DataType = Float64; C₄ = FT(0.2), C₂ = FT(-0.15), Cᴰ = FT(3e-3)) = EnergyBackScatter(C₄, C₂, Cᴰ) 
+EnergyBackScatter(FT::DataType = Float64; C₄ = FT(0.2), C₂ = FT(-0.6), Cᴰ = FT(3e-3)) = EnergyBackScatter(C₄, C₂, Cᴰ) 
 
 DiffusivityFields(grid, tracer_names, bcs, ::EBS) = 
                     (; ν₂ = CenterField(grid),
