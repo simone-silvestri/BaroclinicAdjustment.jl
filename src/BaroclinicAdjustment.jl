@@ -1,6 +1,7 @@
 module BaroclinicAdjustment
 
 export TestCase
+export baroclinic_adjustment_simulation
 
 using Printf
 using Oceananigans
