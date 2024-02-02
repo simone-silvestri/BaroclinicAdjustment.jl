@@ -151,7 +151,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
             0.0
         end
 
-        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, e: %6.3, next Δt: %s\n",
+        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, e: %6.3e, next Δt: %s\n",
                 100 * (sim.model.clock.time / sim.stop_time),
                 sim.model.clock.iteration,
                 prettytime(sim.model.clock.time),
