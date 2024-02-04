@@ -33,7 +33,7 @@ DiffusivityFields(grid, tracer_names, bcs, ::OMp25Closure) =
     ν₂_stat = u₂ * Δ
 
     @inbounds Rh = Ld[i, j, 1] / Δ̃ᶜᶜᶜ(i, j, k, grid)
-    F₂ = 1 / (1 + 0.25 * Rh)
+    F₂ = 1 / (1 + 0.25 * Rh^4)
     C₄ = closure.C₄
     u₄ = closure.u₄
 
