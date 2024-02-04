@@ -2,6 +2,7 @@ using Oceananigans.Utils
 using Oceananigans.Fields: mean
 using Oceananigans.Grids: halo_size
 using Oceananigans.OutputReaders: OnDisk
+using Oceananigans.BoundaryConditions
 using JLD2
 using Oceananigans.Fields: default_indices
 
@@ -28,13 +29,28 @@ assumed_location(var) = var == "u" ? (Face, Center, Center) :
                         var == "w" ? (Center, Center, Face) : 
                         (Center, Center, Center)
 
-function all_fieldtimeseries(filename, dir = nothing; arch = CPU(), variables = ("u", "v", "w", "b"), checkpointer = false)
+function all_fieldtimeseries(filename, dir = nothing; arch = CPU(), variables = ("u", "v", "w", "b"), checkpointer = false,
+                                                      with_halos = false, newpath = nothing )
 
     fields = Dict()
 
     if !(checkpointer)
         for var in variables
-            fields[Symbol(var)] = FieldTimeSeries(filename, var; backend=OnDisk(), architecture=arch)
+            if with_halos
+                location = assumed_location(var)
+                fts_tmp = FieldTimeSeries(filename, var; backend=OnDisk(), architecture=arch)
+                grid  = fts_tmp.grid
+                times = fts_tmp.times
+                fields[Symbol(var)] = FieldTimeSeries{location...}(grid, times; backend=OnDisk(), path = newpath, name = var)
+                ftmp  = Field{location...}(grid)
+                for t in eachindex(times)
+                    interior(ftmp) .= interior(fts_tmp[t])
+                    fill_halo_regions!(ftmp)
+                    set!(fields[Symbol(var)], ftmp, t)
+                end
+            else
+                fields[Symbol(var)] = FieldTimeSeries(filename, var; backend=OnDisk(), architecture=arch)
+            end
         end
     else
         files   = readdir(dir)

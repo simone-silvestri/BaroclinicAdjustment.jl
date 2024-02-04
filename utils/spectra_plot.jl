@@ -14,11 +14,11 @@ const colorWN = :firebrick2
 
 jrange = 40:50
 
-qg08 = jldopen("qgleith_eight_new_postprocess.jld2")
+qg08 = jldopen("ebs_eight_postprocess.jld2")
 wn08 = jldopen("weno9pV_eight_new_postprocess.jld2")
-qg16 = jldopen("qgleith_sixteen_new_postprocess.jld2")
+qg16 = jldopen("upwind_sixteen_postprocess.jld2")
 wn16 = jldopen("weno9pV_sixteen_new_postprocess.jld2")
-qg32 = jldopen("qgleith_thirtytwo_new_postprocess.jld2")
+qg32 = jldopen("weno9pV_thirtytwo_new_postprocess.jld2")
 wn32 = jldopen("weno9pV_thirtytwo_new_postprocess.jld2")
 
 λ8 = range(-10,   10, length = 160)
@@ -106,7 +106,7 @@ lines!(ax, freqw, mean(WBw[:, jrange]).spec[2:end], linewidth = 2, color = color
 lines!(ax, freqp, mean(WBp[:, jrange]).spec[2:end], linewidth = 2, color = colorQG)
 lines!(ax, freqq, mean(WBq[:, jrange]).spec[2:end], linewidth = 2, linestyle = :dash, color = colorQG)
 lines!(ax, freq6, mean(WB6[:, jrange]).spec[2:end], linewidth = 2, linestyle = :dash, color = colorWN)
-lines!(ax, freqQ, mean(WBQ[:, jrange]).spec[2:end], linewidth = 2, linestyle = :dash, color = colorWN)
+lines!(ax, freqQ, mean(WBQ[:, jrange]).spec[2:end], linewidth = 2, linestyle = :dash, color = colorQG)
 lines!(ax, freqW, mean(WBW[:, jrange]).spec[2:end], linewidth = 2, linestyle = :dash, color = colorWN)
 
 ax = Axis(figs[3, 3], ylabel = L"\text{W9V/QG}", xlabel = L"\text{Wavenumber m}^{-1}", xscale = log10, yticks = ([0.5, 1, 1.5], [L"0.5", L"1.0", L"1.5"]), xticks = ([1e-5, 1e-4, 1e-3], [L"10^{-5}", L"10^{-4}", L"10^{-3}"]))

@@ -14,29 +14,27 @@ colorqg = :deepskyblue2
 colorwn = :firebrick2
 colorwd = :orange1
 
-qg08 = jldopen("qgleith_eight_new_postprocess.jld2")
-wn08 = jldopen("upwind_eight_postprocess.jld2")
-qg16 = jldopen("weno9pAllD_eight_new_postprocess.jld2")
-wn16 = jldopen("weno9pV_eight_new_postprocess.jld2")
+qg08 = jldopen("ebs_eight_postprocess.jld2")
+wn08 = jldopen("weno9pV_eight_new_postprocess.jld2")
+wd08 = jldopen("weno9pAllD_eight_new_postprocess.jld2")
+qg16 = jldopen("upwind_sixteen_postprocess.jld2")
+wn16 = jldopen("weno9pV_sixteen_new_postprocess.jld2")
+wd16 = jldopen("omp25_sixteen_postprocess.jld2")
 qg32 = jldopen("qgleith_thirtytwo_new_postprocess.jld2")
 wn32 = jldopen("weno9pV_thirtytwo_new_postprocess.jld2")
 
-wd08 = jldopen("weno9pAllD_sixteen_new_postprocess.jld2")
-wd16 = jldopen("bilap_sixteen_postprocess.jld2")
-
 λ08 = range(-10,  10, length = 160)
 φ08 = range(-60, -40, length = 160)
-φ12 = range(-60, -40, length = 240)
-λ16 = range(-10,  10, length = 160)
-φ16 = range(-60, -40, length = 160)
+λ16 = range(-10,  10, length = 320)
+φ16 = range(-60, -40, length = 320)
 λ32 = range(-10,  10, length = 640)
 φ32 = range(-60, -40, length = 640)
 z  = range(-990, -10, length = 50)
 
 Bd = wd08["mean"].B
-BD = wd16["mean"].B
 Bw = wn08["mean"].B
 Bp = qg08["mean"].B
+BD = wd16["mean"].B
 Bq = qg16["mean"].B
 B6 = wn16["mean"].B
 BQ = qg32["mean"].B
@@ -99,19 +97,18 @@ scatter!(ax, beginnings, marker = :star5, markersize=12, color=colorwn)
 # xlims!(ax, extrema(φ16))
 # ylims!(ax, extrema(z))
 
-# ax2 = Axis(ga[1:3, 1], xaxisposition = :top,
-#            ylabel = L"\text{Depth km}", 
-#            yticks = ([0, -500, -1000], [L"0", L"0.5", L"1"]),
-#            xticks = ([0, 0.0005, 0.001], [L"0", L"0.0005", L"0.001"]),
-#            xlabel = L"\overline{b} - \overline{b}_{\text{Ref}}\text{ at 42.5}^\text{o}")
+ax2 = Axis(ga[1:3, 1], xaxisposition = :top,
+           ylabel = L"\text{Depth km}", 
+           yticks = ([0, -500, -1000], [L"0", L"0.5", L"1"]),
+           xticks = ([0, 0.0005, 0.001], [L"0", L"0.0005", L"0.001"]),
+           xlabel = L"\overline{b} - \overline{b}_{\text{Ref}}\text{ at 42.5}^\text{o}")
 
-# # lines!(ax2, interior(Bd, 1, 140, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorwd, linewidth = 2)
-# # lines!(ax2, interior(Bp, 1, 140, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorqg, linewidth = 2)
-# # lines!(ax2, interior(Bw, 1, 210, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorwn, linewidth = 2)
-# # lines!(ax2, interior(BD, 1, 280, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorwd, linewidth = 1)
-# lines!(ax2, interior(Bq, 1, 280, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorqg, linewidth = 2)
-# lines!(ax2, interior(B6, 1, 280, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorwn, linewidth = 2)
-# scatter!(ax2, interior(Bq, 1, 280, 1:4:50) .- interior(BQ, 1, 560, 1:4:50), z[1:4:50], marker = :star5, markersize=10, color=colorqg)
-# scatter!(ax2, interior(B6, 1, 280, 1:4:50) .- interior(BQ, 1, 560, 1:4:50), z[1:4:50], marker = :star5, markersize=10, color=colorwn)
+lines!(ax2, interior(Bd, 1, 140, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorwd, linewidth = 2)
+lines!(ax2, interior(Bp, 1, 140, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorqg, linewidth = 2)
+lines!(ax2, interior(Bw, 1, 140, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorwn, linewidth = 2)
+lines!(ax2, interior(Bq, 1, 280, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorqg, linewidth = 2)
+lines!(ax2, interior(B6, 1, 280, 1:50) .- interior(BQ, 1, 560, 1:50), z[1:50], color = colorwn, linewidth = 2)
+scatter!(ax2, interior(Bq, 1, 280, 1:4:50) .- interior(BQ, 1, 560, 1:4:50), z[1:4:50], marker = :star5, markersize=10, color=colorqg)
+scatter!(ax2, interior(B6, 1, 280, 1:4:50) .- interior(BQ, 1, 560, 1:4:50), z[1:4:50], marker = :star5, markersize=10, color=colorwn)
 
 # leg = Legend(ga[4, 1], ax)
