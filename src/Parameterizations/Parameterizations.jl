@@ -5,6 +5,7 @@ export Smagorinsky
 export OMp25Closure
 export GeometricBilaplacian
 export Leith
+export BiharmonicLeith
 export EnergyBackScatter
 
 using Oceananigans
@@ -62,6 +63,7 @@ include("qg_leith_viscosity.jl")
 include("geometric_bilaplacian.jl")
 include("smagorinsky_laplacian_viscosity.jl")
 include("leith_laplacian_viscosity.jl")
+include("biharmonic_leith_viscosity.jl")
 include("omp25_lateral_friction.jl")
 include("energy_backscatter.jl")
 
