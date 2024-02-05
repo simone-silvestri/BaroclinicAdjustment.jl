@@ -44,7 +44,9 @@ end
 
 include("baroclinic_adjustment.jl")
 include("Diagnostics/Diagnostics.jl")
+include("PostProcess/Postprocess.jl")
 
 using .Diagnostics
+using .PostProcess
 
 end

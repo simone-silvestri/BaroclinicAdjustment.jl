@@ -46,6 +46,7 @@ using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b
 
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: HorizontalFormulation
+using Oceananigans.TurbulenceClosures: AbstractScalarBiharmonicDiffusivity
 using Oceananigans.Operators
 using Oceananigans.Operators: Δxᶜᶜᶜ, Δyᶜᶜᶜ, ℑxyᶜᶜᵃ, ζ₃ᶠᶠᶜ, div_xyᶜᶜᶜ
 using Oceananigans.Operators: Δx, Δy

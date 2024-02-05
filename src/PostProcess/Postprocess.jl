@@ -1,4 +1,4 @@
-module Utils
+module Postprocess
 
 export calculate_diagnostics
 
@@ -40,6 +40,5 @@ function write_file!(name, var)
 end
 
 include("calculate_diagnostics.jl")
-include("surface_videos.jl")
 
 end # module Utils
