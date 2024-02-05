@@ -194,7 +194,11 @@ end
 
 add_trailing_characters(string, trailing) = string * trailing
 
-function calculate_diagnostics(file_prefix = [], 
+# fallback
+calculate_diagnostics(test::TestCase, trailing_character; kwargs...) = 
+    calculate_diagnostics([test.n], trailing_character; kwargs... )
+
+function calculate_diagnostics(file_prefix::Vector = [], 
                                trailing_character = "_eigth";
                                arch = CPU(),
                                auxiliary_path = nothing,

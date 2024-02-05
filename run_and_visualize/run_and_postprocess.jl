@@ -94,7 +94,7 @@ for (resolution, trailing_character) in zip(resolutions, resnames)
       run!(simulation)
 
       # Postprocessing the outputs
-      Postprocess.calculate_diagnostics(test.n, trailing_character)
+      Postprocess.calculate_diagnostics(test, trailing_character)
    end
 end
 
