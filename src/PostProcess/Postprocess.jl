@@ -1,4 +1,4 @@
-module PostProcess
+module Postprocess
 
 export calculate_diagnostics
 

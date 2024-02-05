@@ -21,11 +21,6 @@ using KernelAbstractions: @kernel, @index
 using JLD2
 using Random
 
-include("Parameterizations/Parameterizations.jl")
-include("outputs.jl")
-
-using .Parameterizations
-
 struct TestCase{A, H, N}
     a :: A # momentum advection scheme
     h :: H # lateral friction
@@ -42,11 +37,14 @@ function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.75)
     return  Base.Int(ceil(2 * Δt / (CFL / wave_speed * Δ)))
 end
 
+include("Parameterizations/Parameterizations.jl")
+include("outputs.jl")
 include("baroclinic_adjustment.jl")
 include("Diagnostics/Diagnostics.jl")
-include("PostProcess/PostProcess.jl")
+include("Postprocess/Postprocess.jl")
 
+using .Parameterizations
 using .Diagnostics
-using .PostProcess
+using .Postprocess
 
 end
