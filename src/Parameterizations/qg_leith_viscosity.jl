@@ -1,10 +1,28 @@
+
+"""
+    struct QGLeith{FT, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
+
+The `QGLeith` struct represents a parameterization for the Leith scalar diffusivity in a quasi-geostrophic model.
+
+Fields
+=======
+- `C`: The coefficient of the Leith scalar diffusivity.
+- `min_N²`: The minimum value of the buoyancy frequency squared.
+- `isopycnal_tensor`: The isopycnal tensor used in the parameterization.
+- `slope_limiter`: The slope limiter used in the parameterization.
+
+Reference
+=========
+Bachman, S., Fox-Kemper, B., & Pearson, B. (2017). A scale-aware subgrid model for
+quasi-geostrophic turbulence. Journal of Geophysical Research: Oceans. 
+doi: 10.1002/2016JC012265
+"""
 struct QGLeith{FT, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
     C :: FT
     min_N² :: FT
     isopycnal_tensor :: M
     slope_limiter :: S
 end
-
 QGLeith(FT::DataType = Float64; C=FT(1.0), min_N² = FT(1e-20), isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
     QGLeith(C, min_N², isopycnal_model, slope_limiter) 
 

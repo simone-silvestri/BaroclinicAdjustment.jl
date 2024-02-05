@@ -8,7 +8,26 @@ using Oceananigans.TurbulenceClosures:
                     ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ,
                     ∂x_∇²h_cᶠᶜᶜ, 
                     ∂y_∇²h_cᶜᶠᶜ
+"""
+    struct EnergyBackScatter{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
 
+The `EnergyBackScatter` struct represents a parameterization for energy backscatter in a baroclinic adjustment model.
+
+Fields
+=======
+
+- `C₄`: Coefficient C₄ for the biharmonic smagorinky dissipation
+- `C₂`: Coefficient C₂ for the backscattering antiviscosity
+- `Cᴰ`: Coefficient Cᴰ for the bottom drag dissipation
+- `Uᵇ`: Background velocity Uᵇ 
+- `τ`: dissipation timescale τ
+
+Reference
+=========
+Jansen, M., Adcroft, A., Khani, S., & Kong, H. (2019). Toward an energetically consistent, resolution aware 
+parameterization of ocean mesoscale eddies. Journal of Advances in Modeling Earth Systems, 
+11 (8), 2844-2860. doi: https://doi.org/10.1029/2019MS001750
+"""
 struct EnergyBackScatter{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
     C₄ :: FT
     C₂ :: FT

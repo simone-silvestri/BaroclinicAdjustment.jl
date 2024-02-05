@@ -1,4 +1,24 @@
 using Oceananigans.Operators
+
+"""
+    struct OMp25Closure{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
+
+The `OMp25Closure` struct represents the lateral friction parameterization of the OMp25 GFDL ocean model.
+
+Fields
+======
+- `C₄::FT`: Coefficient C₄ for the bilaplacia Smagorinky viscosity
+- `u₄::FT`: Velocity scale u₄ for the static bilaplacian viscosity
+- `C₂::FT`: Coefficient C₂ for the laplacian Smagorinky viscosity
+- `u₂::FT`: Velocity scale u₂ for the static laplacian viscosity
+
+Reference
+=========
+Adcroft, A., Anderson, W., Balaji, V., Blanton, C., Bushuk, M., Dufour, C., . . . Zhang, R. (2019). 
+The gfdl global ocean and sea ice model om4.0: Model description and simulation features. 
+Journal of Advances in Modeling Earth Systems, 11 (10), 3167-3211.
+doi: https://doi.org/10.1029/2019MS001726633
+"""
 struct OMp25Closure{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
     C₄ :: FT
     u₄ :: FT

@@ -1,3 +1,18 @@
+"""
+    struct BiharmonicLeith{FT} <: AbstractScalarBiharmonicDiffusivity{HorizontalFormulation, 3}
+
+The `BiharmonicLeith` struct represents a biharmonic Leith viscosity parameterization.
+
+Fields
+======
+- `C::FT`: The coefficient of the biharmonic Leith viscosity.
+
+Reference
+=========
+Fox-Kemper, B., & Menemenlis, D. (2004). Can large eddy simulation techniques improve
+mesoscale rich ocean models? In M. Hecht & H. Hasumi (Eds.), Ocean modeling in an eddying regime 
+(pp. 319 - 337). doi: 10.1029/177GM19
+"""
 struct BiharmonicLeith{FT} <: AbstractScalarBiharmonicDiffusivity{HorizontalFormulation, 3}
     C :: FT
 end
