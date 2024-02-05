@@ -1,4 +1,5 @@
 using Oceananigans.Coriolis: hack_sind
+using Statistics
 
 @inline function buoyancy_forcing(i, j, k, grid, clock, fields, p)
     @inbounds B  = p.B[1, j, k]
@@ -34,15 +35,25 @@ end
     return - 1 / f * (p.Lz + z) * ∂b∂x * ∂x∂φ * ∂φ∂y
 end
 
-function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Float64; arch = GPU(), 
-                                                   horizontal_closure = nothing,
-                                                   momentum_advection = VectorInvariant(),
-                                                   tracer_advection = WENO(FT),
-                                                   buoyancy_forcing_timescale = 50days,
-                                                   background_νz = 1e-4,
-                                                   auxiliary_fields = NamedTuple(),
-                                                   φ₀ = - 50,
-                                                   stop_time = 1000days)
+function baroclinic_adjustment_simulation(testcase::TestCase, resolution, trailing = ""; kwargs...) 
+    name = testcase.n * trailing
+    momentum_advection = testcase.a
+    horizontal_closure = testcase.h
+
+    @info "Running case $name with" momentum_advection horizontal_closure
+
+    return baroclinic_adjustment_simulation(resolution, name; momentum_advection, horizontal_closure, kwargs...)
+end
+
+function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = Float64; 
+                                          arch = GPU(), 
+                                          horizontal_closure = nothing,
+                                          momentum_advection = VectorInvariant(), 
+                                          tracer_advection = WENO(FT; order = 7),
+                                          buoyancy_forcing_timescale = 50days,
+                                          background_νz = 1e-4,
+                                          φ₀ = - 50,
+                                          stop_time = 1000days)
     
     # Domain
     Lz = 1kilometers     # depth [m]
@@ -57,7 +68,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                                 latitude = (φ₀-10, φ₀+10),
                                 z = (-Lz, 0),
                                 halo = (6, 6, 6))
-
+    
     vertical_closure = VerticalScalarDiffusivity(FT; κ = 1e-5, ν = background_νz)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
@@ -79,7 +90,7 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
                coriolis,
                R = grid.radius)
 
-    free_surface = SplitExplicitFreeSurface(FT; grid, cfl = 0.75)
+    free_surface = SplitExplicitFreeSurface(FT; grid, cfl = 0.75, fixed_Δt = 20minutes)
     @info "Building a model..."
 
     if !isnothing(buoyancy_forcing_timescale)
@@ -119,7 +130,8 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt = 20minutes, min_Δt = 15)
+    max_Δt = resolution < 1/20 ? 8minutes : 20minutes
+    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt, min_Δt = 15)
     simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     function update_mean_values(sim)
@@ -133,14 +145,17 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     wall_clock = [time_ns()]
 
     function print_progress(sim)
-        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
+
+        e = maximum(sim.model.diffusivity_fields[2].e)
+        
+        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, e: %6.3e, next Δt: %s\n",
                 100 * (sim.model.clock.time / sim.stop_time),
                 sim.model.clock.iteration,
                 prettytime(sim.model.clock.time),
                 prettytime(1e-9 * (time_ns() - wall_clock[1])),
                 maximum(abs, sim.model.velocities.u),
                 maximum(abs, sim.model.velocities.v),
-                maximum(abs, sim.model.velocities.w),
+                maximum(abs, sim.model.velocities.w), e,
                 prettytime(sim.Δt))
 
         wall_clock[1] = time_ns()
@@ -149,8 +164,11 @@ function baroclinic_adjustment_latlong(resolution, filename, FT::DataType = Floa
     end
 
     simulation.callbacks[:print_progress]     = Callback(print_progress,     IterationInterval(20))
-    simulation.callbacks[:update_mean_values] = Callback(update_mean_values, IterationInterval(10))
-
+    
+    if !isnothing(buoyancy_forcing_timescale)
+        simulation.callbacks[:update_mean_values] = Callback(update_mean_values, IterationInterval(10))
+    end
+    
     reduced_outputs!(simulation, filename)
 
     return simulation
