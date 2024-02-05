@@ -60,9 +60,6 @@ end
 
 import Oceananigans.Fields: set!
 using Oceananigans.OutputReaders: initialize_file!, maybe_write_property!
-using Oceananigans.OutputReaders: InMemoryFieldTimeSeries
-
-set!(time_series::InMemoryFieldTimeSeries, f, index::Int) = set!(time_series[index], f)
  
 # When we set! a OnDiskFieldTimeSeries we automatically write down the memory path
 function set!(time_series::OnDiskFieldTimeSeries, f::AbstractOperation, index::Int)
