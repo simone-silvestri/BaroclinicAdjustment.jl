@@ -13,7 +13,7 @@ Base.:(*)(s::Spectrum, t::Spectrum) = Spectrum(s.spec .* t.spec, s.freq)
 Base.:(/)(s::Spectrum, t::Int)      = Spectrum(s.spec ./ t, s.freq)
 
 Base.real(s::Spectrum) = Spectrum(real.(s.spec), s.freq)
-Base.abs(s::Spectrum) = Spectrum(abs.(s.spec), s.freq)
+Base.abs(s::Spectrum)  = Spectrum( abs.(s.spec), s.freq)
 
 @inline onefunc(args...)  = 1.0
 @inline hann_window(n, N) = sin(π * n / N)^2 

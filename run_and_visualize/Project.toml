@@ -1,0 +1,3 @@
+[deps]
+BaroclinicAdjustment = "2ba04c38-97e8-4ac2-88ab-325be645c0d7"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"

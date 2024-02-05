@@ -1,43 +1,28 @@
-using Oceananigans
-using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.TurbulenceClosures:
-        tapering_factorᶠᶜᶜ,
-        tapering_factorᶜᶠᶜ,
-        tapering_factorᶜᶜᶠ,
-        tapering_factor,
-        SmallSlopeIsopycnalTensor,
-        AbstractScalarDiffusivity,
-        ExplicitTimeDiscretization,
-        FluxTapering,
-        isopycnal_rotation_tensor_xz_ccf,
-        isopycnal_rotation_tensor_yz_ccf,
-        isopycnal_rotation_tensor_zz_ccf
+"""
+    struct QGLeith{FT, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
 
-import Oceananigans.TurbulenceClosures:
-        compute_diffusivities!,
-        DiffusivityFields,
-        viscosity, 
-        diffusivity,
-        diffusive_flux_x,
-        diffusive_flux_y, 
-        diffusive_flux_z
+The `QGLeith` struct represents a parameterization for the Leith scalar diffusivity in a quasi-geostrophic model.
 
-using Oceananigans.Utils: launch!
-using Oceananigans.Coriolis: fᶠᶠᵃ
-using Oceananigans.Operators
-using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b 
+Fields
+=======
+- `C`: The coefficient of the Leith scalar diffusivity.
+- `min_N²`: The minimum value of the buoyancy frequency squared.
+- `isopycnal_tensor`: The isopycnal tensor used in the parameterization.
+- `slope_limiter`: The slope limiter used in the parameterization.
 
-using Oceananigans.Operators: ℑxyzᶜᶜᶠ, ℑyzᵃᶜᶠ, ℑxzᶜᵃᶠ, Δxᶜᶜᶜ, Δyᶜᶜᶜ
-
+Reference
+=========
+Bachman, S., Fox-Kemper, B., & Pearson, B. (2017). A scale-aware subgrid model for
+quasi-geostrophic turbulence. Journal of Geophysical Research: Oceans. 
+doi: 10.1002/2016JC012265
+"""
 struct QGLeith{FT, M, S} <: AbstractScalarDiffusivity{ExplicitTimeDiscretization, HorizontalFormulation, 2}
     C :: FT
     min_N² :: FT
     isopycnal_tensor :: M
     slope_limiter :: S
 end
-
 QGLeith(FT::DataType = Float64; C=FT(1.0), min_N² = FT(1e-20), isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
     QGLeith(C, min_N², isopycnal_model, slope_limiter) 
 
@@ -80,10 +65,7 @@ end
     return ∂zqx, ∂zqy
 end
 
-"Return the filter width for a Leith Diffusivity on a general grid."
-@inline Δ²ᶜᶜᶜ(i, j, k, grid) =  2 * (1 / (1 / Δxᶜᶜᶜ(i, j, k, grid)^2 + 1 / Δyᶜᶜᶜ(i, j, k, grid)^2))
-
-@kernel function calculate_qgleith_viscosity!(ν, Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
+@kernel function _calculate_qgleith_viscosity!(ν, Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
     i, j, k = @index(Global, NTuple)
 
     ∂ζx, ∂ζy =  abs²_∇h_ζ(i, j, k, grid, coriolis, velocities)
@@ -113,7 +95,7 @@ end
 @inline _deformation_radius(i, j, k, grid, C, buoyancy, coriolis) = sqrt(max(0, ∂z_b(i, j, k, grid, buoyancy, C))) / π /
                                                                          abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis))
 
-@kernel function calculate_deformation_radius!(Ld, grid, tracers, buoyancy, coriolis)
+@kernel function _calculate_deformation_radius!(Ld, grid, tracers, buoyancy, coriolis)
     i, j = @index(Global, NTuple)
 
     @inbounds begin
@@ -133,10 +115,10 @@ function compute_diffusivities!(diffusivity_fields, closure::QGLeith, model; par
     coriolis = model.coriolis
 
     launch!(arch, grid, :xy, 
-            calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
+            _calculate_deformation_radius!, diffusivity_fields.Ld, grid, tracers, buoyancy, coriolis)
 
     launch!(arch, grid, parameters,
-            calculate_qgleith_viscosity!,
+            _calculate_qgleith_viscosity!,
             diffusivity_fields.νₑ, diffusivity_fields.Ld, grid, closure, velocities, tracers, buoyancy, coriolis)
 
     return nothing

@@ -52,18 +52,21 @@ function StratificationOperation(b)
     return N2_op
 end
 
-@inline N²ᶠᶠᶠ(i, j, k, grid, b) = max(1e-10, ℑxyᶠᶠᵃ(i, j, k, grid, ∂zᶜᶜᶠ, b))
-@inline N²ᶜᶜᶠ(i, j, k, grid, b) = max(1e-10, ∂zᶜᶜᶠ(i, j, k, grid, b))
+@inline N²ᶜᶜᶠ(i, j, k, grid, b)    = ∂zᶜᶜᶠ(i, j, k, grid, b)
+@inline fᶜᶜᵃ(i, j, k, grid)        = ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, HydrostaticSphericalCoriolis())
+@inline ζ₃ᶜᶜᶜ(i, j, k, grid, u, v) = ℑxyᶜᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v)
 
-@inline b_term(i, j, k, grid, b) = fᶠᶠᵃ(i, j, k, grid, HydrostaticSphericalCoriolis()) / N²ᶠᶠᶠ(i, j, k, grid, b) * ℑxyᶠᶠᵃ(i, j, k, grid, b)
-@inline pvᶠᶠᶜ(i, j, k, grid, u, v, b) = ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) + ∂zᶠᶠᶜ(i, j, k, grid, b_term, b) 
+@inline pvᶜᶜᶜ(i, j, k, grid, u, v, b) = (ζ₃ᶜᶜᶜ(i, j, k, grid, u, v) + fᶜᶜᵃ(i, j, k, grid)) * ℑzᵃᵃᶜ(i, j, k, grid, N²ᶜᶜᶠ, b) +
+                                         ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, u) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, b) + 
+                                         ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, v) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, b)
+                                        
 
 function PotentialVorticityOperation(fields::NamedTuple)
 
     grid = fields.u.grid
     computed_dependencies = (fields.u, fields.v, fields.b)
 
-    ζ_op = KernelFunctionOperation{Face, Face, Center}(pvᶠᶠᶜ, grid, computed_dependencies...)
+    ζ_op = KernelFunctionOperation{Center, Center, Center}(pvᶜᶜᶜ, grid, computed_dependencies...)
 
     return ζ_op
 end
@@ -89,10 +92,11 @@ function RiNumberOperation(fields::NamedTuple)
     return Ri_op
 end
 
-VerticalVorticity(f::Dict, i) = compute!(Field(VerticalVorticityOperation(f, i)))
-KineticEnergy(f::Dict, i)     = compute!(Field(KineticEnergyOperation(f, i)))
-Stratification(f::Dict, i)    = compute!(Field(StratificationOperation(f, i)))
-RiNumber(f::Dict, i)          = compute!(Field(RiNumberOperation(f, i)))
+PotentialVorticity(f::Dict, i) = compute!(Field(PotentialVorticityOperation(f, i)))
+VerticalVorticity(f::Dict, i)  = compute!(Field(VerticalVorticityOperation(f, i)))
+KineticEnergy(f::Dict, i)      = compute!(Field(KineticEnergyOperation(f, i)))
+Stratification(f::Dict, i)     = compute!(Field(StratificationOperation(f, i)))
+RiNumber(f::Dict, i)           = compute!(Field(RiNumberOperation(f, i)))
 
 @inline _deformation_radius(i, j, k, grid, b) = sqrt(max(0, ∂zᶜᶜᶠ(i, j, k, grid, b))) / π /
                                                 abs(ℑxyᶜᶜᵃ(i, j, k, grid, fᶠᶠᵃ, HydrostaticSphericalCoriolis()))
