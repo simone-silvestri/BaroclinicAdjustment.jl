@@ -1,6 +1,6 @@
 module Postprocess
 
-export calculate_diagnostics
+export calculate_diagnostics 
 
 using BaroclinicAdjustment
 using Oceananigans
