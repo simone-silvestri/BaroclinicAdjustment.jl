@@ -15,8 +15,6 @@ using Oceananigans.Advection: VelocityStencil, DefaultStencil, EnergyConserving
 using Oceananigans.Advection: FunctionStencil, divergence_smoothness
 using Oceananigans.Advection: CrossAndSelfUpwinding, OnlySelfUpwinding, VelocityUpwinding
 
-using Oceananigans.Advection: VectorInvariantCrossVerticalUpwinding, VectorInvariantSelfVerticalUpwinding, VectorInvariantVelocityVerticalUpwinding
-
 using KernelAbstractions: @kernel, @index
 using JLD2
 using Random

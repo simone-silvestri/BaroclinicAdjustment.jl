@@ -28,10 +28,17 @@ To install BaroclinicAdjustment, follow these steps:
     julia --project -e 'import Pkg; Pkg.instantiate()'
     ```
 
-## Running the Test Cases
+## Reproducing the figures
 
 To run the test cases, execute the following command from the project directory:
 
 ```shell
 julia --project=run_and_visualize run_and_postprocess.jl
+```
+
+Note, the data generation is performed on GPUs, so make sure to have a CUDA-capable GPU
+available. Once the data has been generated, to reproduce the figures in the paper execute:
+
+```shell
+julia  --project=run_and_visualize generate_figures.jl
 ```
