@@ -6,6 +6,6 @@
     <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
 </a>
 
-<a href="https://simone-silvestri.github.io/WenoNeverworld.jl/dev">
+<a href="https://simone-silvestri.github.io/BaroclinicAdjustment.jl/dev">
     <img alt="Documentation" src="https://img.shields.io/badge/documentation-stable%20release-red?style=flat-square">
 </a>
