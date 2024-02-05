@@ -98,9 +98,12 @@ function compute_diffusivities!(diffusivity_fields, closure::EBS, model; paramet
     Δt = model.clock.time - diffusivity_fields.previous_compute_time[]
     diffusivity_fields.previous_compute_time[] = model.clock.time
 
+    barotropic_velocities = (; u = model.free_surface.state.U, 
+                               v = model.free_surface.state.V)
+
     launch!(arch, grid, :xy, 
             _advance_tke!, diffusivity_fields,
-                           grid, model.clock, velocities, advection, 
+                           grid, model.clock, velocities, barotropic_velocities, advection, 
                            closure, Δt, Val(grid.Nz))
 
     launch!(arch, grid, parameters,
@@ -121,15 +124,14 @@ using Oceananigans.Operators
 @inline ∂u_τˣ₁(i, j, k, grid, u, args...) = ∂xᶜᶜᶜ(i, j, k, grid, u) * viscous_flux_ux(i, j, k, grid, args...)
 @inline ∂v_τʸ₂(i, j, k, grid, v, args...) = ∂yᶜᶜᶜ(i, j, k, grid, v) * viscous_flux_vy(i, j, k, grid, args...)
 
-@kernel function _advance_tke!(diffusivities, grid, clock, velocities, advection, closure, Δt, ::Val{Nz}) where Nz
+@kernel function _advance_tke!(diffusivities, grid, clock, velocities, barotropic_velocities, advection, closure, Δt, ::Val{Nz}) where Nz
     i, j  = @index(Global, NTuple)
     u, v, _ = velocities
 
     εˣ = zero(grid)
     εʸ = zero(grid)
 
-    @unroll for k in 1:Nz
-        
+    @unroll for k in 1:Nz    
         Δz = Δzᶜᶜᶜ(i, j, k, grid) / grid.Lz
         
         args = (closure, diffusivities, clock, velocities, nothing)
@@ -151,7 +153,7 @@ using Oceananigans.Operators
 
     implicit_bottom_friction = @inbounds Cᴰ * sqrt(s² + e[i, j, 1] + closure.Uᵇ^2) 
 
-    Gⁿ = - div_Uc(i, j, 1, grid, advection, velocities, e) - (εˣ + εʸ)
+    Gⁿ = - div_Uc(i, j, 1, grid, advection, barotropic_velocities, e) - (εˣ + εʸ)
 
     #  - bottom_friction + 
     @inbounds e[i, j, 1]  = (e[i, j, 1] + Δt * (α * Gⁿ - β * G⁻[i, j, 1])) / (1 + Δt * implicit_bottom_friction)
