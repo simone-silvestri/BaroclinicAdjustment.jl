@@ -26,15 +26,15 @@ wn16 = all_fieldtimeseries("qgleith_eight_new_snapshots.jld2", "./")
 qg32 = all_fieldtimeseries("weno9pAllD_eight_new_snapshots.jld2", "./")
 wn32 = all_fieldtimeseries("upwind_eight_snapshots.jld2", "./")
 
-ζqg08 = Diagnostics.Stratification(qg08, 119)
-ζwn08 = Diagnostics.Stratification(wn08, 119)
-ζqg16 = Diagnostics.Stratification(qg16, 119)
-ζwn16 = Diagnostics.Stratification(wn16, 119)
-ζqg32 = Diagnostics.Stratification(qg32, 119)
-ζwn32 = Diagnostics.Stratification(wn32, 119)
+ζqg08 = Diagnostics.DeformationRadius(qg08, 119)
+ζwn08 = Diagnostics.DeformationRadius(wn08, 119)
+ζqg16 = Diagnostics.DeformationRadius(qg16, 119)
+ζwn16 = Diagnostics.DeformationRadius(wn16, 119)
+ζqg32 = Diagnostics.DeformationRadius(qg32, 119)
+ζwn32 = Diagnostics.DeformationRadius(wn32, 119)
 surfargs = (colorrange = (0, 8e-6), colormap = :magma)
 
-level = 20
+level = 1
 
 λ08, φ08, _ = enhance_vars.(Array.(nodes(ζqg08)))
 λ16, φ16, _ = enhance_vars.(Array.(nodes(ζqg16)))
