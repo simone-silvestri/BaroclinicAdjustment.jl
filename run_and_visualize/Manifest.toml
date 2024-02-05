@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "b15672e3bb9c0f42a37745ebc57fb9cb8e1c7b9b"
+project_hash = "4aaba9b6be0250535138bfe8ea4fdf08991aa6f8"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -78,6 +78,14 @@ deps = ["LinearAlgebra", "Printf", "Random", "Test"]
 git-tree-sha1 = "dbf84058d0a8cbbadee18d25cf606934b22d7c66"
 uuid = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
 version = "0.4.2"
+
+[[deps.BaroclinicAdjustment]]
+deps = ["BitInformation", "ColorSchemes", "Documenter", "DocumenterTools", "FFTW", "JLD2", "KernelAbstractions", "Oceananigans", "Printf", "Random", "Statistics"]
+git-tree-sha1 = "ac0ff5d6e4f2977acc5e40f1a9fd8cac4e325271"
+repo-rev = "ss/in-development"
+repo-url = ".."
+uuid = "2ba04c38-97e8-4ac2-88ab-325be645c0d7"
+version = "1.0.0-DEV"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
