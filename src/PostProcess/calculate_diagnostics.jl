@@ -150,7 +150,6 @@ function write_down_fields(fields::Dict; path = nothing)
     new_fields = Dict()
     grid  = fields[:u].grid
     times = fields[:u].times
-    path = fields[:u].data.path
 
     path = path isa Nothing ? nothing : path * "all_values.jld2" 
     
