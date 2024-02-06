@@ -236,8 +236,8 @@ function calculate_diagnostics(file_prefix::Vector = [],
         if isfile(filename) 
             @info "doing file " filename arch
 
-            aux_arch = path isa Nothing ? arch : CPU()
-            new_arch = path isa Nothing ? nothing : arch
+            aux_arch = src_path isa Nothing ? arch : CPU()
+            new_arch = src_path isa Nothing ? nothing : arch
 
             fields_previous = all_fieldtimeseries(filename; arch = aux_arch)
 	        fields = write_down_fields(fields_previous; arch = new_arch, path = src_path, chunk_size)            
