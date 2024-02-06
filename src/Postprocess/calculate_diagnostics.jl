@@ -146,7 +146,7 @@ function compute_instability(fields, fm; path = nothing)
     return (; u′b′, v′b′)
 end
 
-function write_down_fields(fields::Dict; path = nothing)
+function write_down_fields(fields::Dict; path = nothing, chunk_size = nothing)
     new_fields = Dict()
     grid  = fields[:u].grid
     times = fields[:u].times
@@ -183,6 +183,13 @@ function write_down_fields(fields::Dict; path = nothing)
       set!(b, btmp, t)
     end
 
+    if !(chunk_size isa Nothing)
+        u = FieldTimeSeries(path, "u"; backend = InMemory(; chunk_size))
+        v = FieldTimeSeries(path, "v"; backend = InMemory(; chunk_size))
+        w = FieldTimeSeries(path, "w"; backend = InMemory(; chunk_size))
+        b = FieldTimeSeries(path, "b"; backend = InMemory(; chunk_size)) 
+    end
+
     new_fields[:u] = u
     new_fields[:v] = v
     new_fields[:w] = w
@@ -201,7 +208,8 @@ function calculate_diagnostics(file_prefix::Vector = [],
                                trailing_character = "_eigth";
                                arch = CPU(),
                                auxiliary_path = nothing,
-                               src_path = nothing)
+                               src_path = nothing,
+                               chunk_size = nothing)
     
     if !(auxiliary_path isa Nothing)
         try 
@@ -226,7 +234,7 @@ function calculate_diagnostics(file_prefix::Vector = [],
         if isfile(filename) 
             @info "doing file " filename arch
             fields_previous = all_fieldtimeseries(filename; arch)
-	        fields = write_down_fields(fields_previous; path = src_path)            
+	        fields = write_down_fields(fields_previous; path = src_path, chunk_size)            
 
             lim = min(200, length(fields[:u].times))
 
