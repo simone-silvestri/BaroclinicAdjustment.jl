@@ -99,8 +99,8 @@ function compute_energy_timeseries(f; path = nothing)
 
     B = propagate(f[:b]; func = x -> mean(x, dims = 2))
 
-    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B)
-    N² = propagate(B; func = B -> StratificationOperation(B))
+    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B, path = meanpath, name = "B̅")
+    N² = propagate(B; func = B -> StratificationOperation(B), path = meanpath, name = "N²")
 
     MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
     EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
