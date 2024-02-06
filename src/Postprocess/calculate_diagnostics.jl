@@ -26,6 +26,41 @@ using Oceananigans.Advection: VelocityStencil, DefaultStencil
 
 using BaroclinicAdjustment.Diagnostics: VerticalVorticityOperation, KineticEnergyOperation, DensityOperation
 
+using Oceananigans.Grids: 
+        cpu_face_constructor_x, 
+        cpu_face_constructor_y, 
+        cpu_face_constructor_z,
+        pop_flat_elements,
+        topology,
+        architecture,
+        metrics_precomputed
+
+function with_precision(precision::DataType, old_grid::LatitudeLongitudeGrid)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    halo = (old_grid.Hx, old_grid.Hy, old_grid.Hz)
+
+    topo = topology(old_grid)
+
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size     = pop_flat_elements(size, topo)
+    new_halo = pop_flat_elements(halo, topo)
+
+    new_grid = LatitudeLongitudeGrid(architecture(old_grid), precision;
+                                     size = size, halo = new_halo,
+                                     longitude = x, latitude = y, z = z, topology = topo,
+                                     precompute_metrics = metrics_precomputed(old_grid),
+                                     radius = old_grid.radius)
+
+    return new_grid
+end
+
+
 add_trailing_name(name) = name * "_snapshots.jld2"
 
 function compute_energy_diagnostics(f::Dict, iterations; path = auxiliary_path)      
@@ -152,9 +187,10 @@ function write_down_fields(fields::Dict; arch = nothing, path = nothing, chunk_s
     times = fields[:u].times
 
     grid = arch isa Nothing ? grid : on_architecture(arch, grid)
-
     path = path isa Nothing ? nothing : path * "all_values.jld2" 
     
+    grid = with_precision(Float32, grid)
+
     if path isa Nothing
         u = FieldTimeSeries{Face, Center, Center}(grid,   times)
         v = FieldTimeSeries{Center, Face, Center}(grid,   times)
