@@ -213,7 +213,6 @@ function write_down_fields(fields::Dict; arch = nothing, path = nothing, chunk_s
       set!(vtmp, Array(interior(fields[:v][t])))
       set!(wtmp, Array(interior(fields[:w][t])))
       set!(btmp, Array(interior(fields[:b][t])))
-      fill_halo_regions!((utmp, vtmp, wtmp, btmp))
 
       set!(u, utmp, t) 
       set!(v, vtmp, t)
