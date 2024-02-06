@@ -146,10 +146,12 @@ function compute_instability(fields, fm; path = nothing)
     return (; u′b′, v′b′)
 end
 
-function write_down_fields(fields::Dict; path = nothing, chunk_size = nothing)
+function write_down_fields(fields::Dict; arch = nothing, path = nothing, chunk_size = nothing)
     new_fields = Dict()
     grid  = fields[:u].grid
     times = fields[:u].times
+
+    grid = arch isa Nothing ? grid : on_architecture(arch, grid)
 
     path = path isa Nothing ? nothing : path * "all_values.jld2" 
     
@@ -233,8 +235,12 @@ function calculate_diagnostics(file_prefix::Vector = [],
     for (prefix, filename) in zip(file_prefix, filenames)
         if isfile(filename) 
             @info "doing file " filename arch
-            fields_previous = all_fieldtimeseries(filename; arch)
-	        fields = write_down_fields(fields_previous; path = src_path, chunk_size)            
+
+            aux_arch = path isa Nothing ? arch : CPU()
+            new_arch = path isa Nothing ? nothing : arch
+
+            fields_previous = all_fieldtimeseries(filename; arch = aux_arch)
+	        fields = write_down_fields(fields_previous; arch = new_arch, path = src_path, chunk_size)            
 
             lim = min(200, length(fields[:u].times))
 
