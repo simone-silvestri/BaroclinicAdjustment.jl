@@ -1,8 +1,8 @@
 using Documenter
 using BaroclinicAdjustment
 
-api = Any[
-    "API" => "functions.md"
+closures = Any[
+    "Horizontal closures" => "functions.md"
 ]
 
 makedocs(
@@ -10,7 +10,7 @@ makedocs(
     format = Documenter.HTML(),
     pages=[
         "Home" => "index.md",
-        "API" => api,
+        "Horizontal closures" => closures,
     ]
 )
 

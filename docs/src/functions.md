@@ -1,5 +1,5 @@
-# [List of functions in BaroclinicAdjustmen](@id sec:API)
+# [Horizontal Closures](@id sec:API)
 
 ```@autodocs
-Modules = [ BaroclinicAdjustment, BaroclinicAdjustment.Parameterizations, BaroclinicAdjustment.Diagnostics, BaroclinicAdjustment.Postprocess]
+Modules = [BaroclinicAdjustment.Parameterizations]
 ```
