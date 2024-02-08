@@ -88,9 +88,9 @@ function mean_eke(u, v, V)
     ū = mean(u, dims = 1)
     v̄ = mean(v, dims = 1)
 
-    MEKE = 0.5 * (ū^2 + v̄^2) * V
+    MEKE = ū^2 + v̄^2
 
-    return sum(MEKE)
+    return 0.5 * sum(MEKE * V)
 end
 
 function eddy_eke(u, v, V)
@@ -100,9 +100,9 @@ function eddy_eke(u, v, V)
     u′ = u - ū
     v′ = v - v̄
 
-    EKE = 0.5 * (u′^2 + v′^2) * V
+    EKE = u′^2 + v′^2
 
-    return sum(EKE)
+    return 0.5 * sum(EKE * V)
 end
 
 function mean_ape(b, V)
@@ -113,9 +113,9 @@ function mean_ape(b, V)
     B̄  = b̄ - B
     N² = StratificationOperation(B)
 
-    MAPE = 0.5 * B̄^2 / N² * V
+    MAPE = B̄^2 / N²
 
-    return sum(MAPE)
+    return 0.5 * sum(MAPE * V)
 end
 
 function eddy_ape(b, V)
@@ -127,9 +127,9 @@ function eddy_ape(b, V)
     N² = StratificationOperation(B)
 
     b′ = b - B̄
-    EAPE = 0.5 * b′^2 / N² * V
+    EAPE = b′^2 / N²
 
-    return sum(EAPE)
+    return  0.5 * sum(EAPE * V)
 end
 
 function compute_energy_timeseries(f)
