@@ -69,7 +69,7 @@ function compute_energy_diagnostics(f::Dict, iterations; path = auxiliary_path)
 
     Etimeseries = compute_energy_timeseries(f; path)
 
-    E = FieldTimeSeries{Face, Center, Center}(f[:u].grid, f[:u].times[iterations])
+    E = FieldTimeSeries{Center, Center, Center}(f[:u].grid, f[:u].times[iterations])
 
     for (i, t) in enumerate(iterations)
         set!(E[i], KineticEnergyOperation(f, t))
@@ -86,26 +86,32 @@ end
 
 function compute_energy_timeseries(f; path = nothing)
 
+    grid = f[:u].grid
+    Vᶜᶜᶜ = VolumeField(grid)
+    V̄ᶜᶜᶜ = sum(Vᶜᶜᶜ, dims = 1)
+    Vᵗ   = sum(interior(V̄ᶜᶜᶜ))
+
     meanpath = path isa Nothing ? nothing : path * "mean_val.jld2"
     flucpath = path isa Nothing ? nothing : path * "fluc_val.jld2"
-
+    auxipath = path isa Nothing ? nothing : path * "strat_val.jld2"
+    
     ū = propagate(f[:u]; func = x -> mean(x, dims = 1), path = meanpath, name = "u")
     v̄ = propagate(f[:v]; func = x -> mean(x, dims = 1), path = meanpath, name = "v")
     b̄ = propagate(f[:b]; func = x -> mean(x, dims = 1), path = meanpath, name = "b")
 
-    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = flucpath, name = "u")
-    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = flucpath, name = "v")
-    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = flucpath, name = "b")
+    u′ = propagate(f[:u], ū; func = (x, X) -> x - X, path = flucpath, name = "u_prime")
+    v′ = propagate(f[:v], v̄; func = (x, X) -> x - X, path = flucpath, name = "v_prime")
+    b′ = propagate(f[:b], b̄; func = (x, X) -> x - X, path = flucpath, name = "b_prime")
 
     B = propagate(f[:b]; func = x -> mean(x, dims = 2))
 
-    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B, path = meanpath, name = "B̅")
-    N² = propagate(B; func = B -> StratificationOperation(B), path = meanpath, name = "N²")
+    B̄  = propagate(b̄, B; func = (b̄, B) -> b̄ - B, path = auxipath, name = "Bmean")
+    N² = propagate(B; func = B -> StratificationOperation(B), path = auxipath, name = "strat")
 
-    MEKE = propagate(ū , v̄ ; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
-    EKE  = propagate(u′, v′; func = (u, v)  -> mean(0.5 * (u^2 + v^2)))
-    MAPE = propagate(B̄ , N²; func = (B, N²) -> mean(0.5 * B^2 / N²))
-    EAPE = propagate(b′, N²; func = (b, N²) -> mean(0.5 * b^2 / N²))
+    MEKE = propagate(ū , v̄ , V̄ᶜᶜᶜ; func = (u, v, V)  -> sum(0.5 * (u^2 + v^2) * V) / Vᵗ)
+    EKE  = propagate(u′, v′, Vᶜᶜᶜ; func = (u, v, V)  -> sum(0.5 * (u^2 + v^2) * V) / Vᵗ)
+    MAPE = propagate(B̄ , N², V̄ᶜᶜᶜ; func = (B, N², V) -> sum(0.5 * B^2 / N² * V) / Vᵗ)
+    EAPE = propagate(b′, N², Vᶜᶜᶜ; func = (b, N², V) -> sum(0.5 * b^2 / N² * V) / Vᵗ)
 
     return (; MEKE, EKE, MAPE, EAPE)
 end
@@ -284,26 +290,31 @@ function calculate_diagnostics(file_prefix::Vector = [],
             GC.gc(true)
             enstrophy = calculate_Ω(fields)
             GC.gc(true)
-            CUDA.@allowscalar begin
-               N²     = calculate_N²(fields)
-            end
-            GC.gc(true)
             spectra  = compute_spectra(fields, 50:lim)
             GC.gc(true)
+
             averages = compute_zonal_mean(fields, 50:lim)
             GC.gc(true)
+
+            # From here I do not need!
+            #= 
             variance = compute_variances(fields, averages, 50:lim; path = auxiliary_path)      
             GC.gc(true)
             instab   = compute_instability(fields, averages; path = auxiliary_path)      
             GC.gc(true)
+            CUDA.@allowscalar begin
+               N² = calculate_N²(fields)
+            end
+            GC.gc(true)
+	        postprocess[:stratif]  = move_on_cpu(N²)
+	        postprocess[:variance] = move_on_cpu(variance)
+	        postprocess[:instab]   = move_on_cpu(instab)
+            =#
 
 	        postprocess[:energies]  = move_on_cpu(energy)
 	        postprocess[:enstrophy] = move_on_cpu(enstrophy)
-	        postprocess[:stratif]   = move_on_cpu(N²)
 	        postprocess[:spectra]   = move_on_cpu(spectra)
 	        postprocess[:mean]      = move_on_cpu(averages)
-	        postprocess[:variance]  = move_on_cpu(variance)
-	        postprocess[:instab]    = move_on_cpu(instab)
 
             write_file!(prefix * trailing_character * "_postprocess.jld2", postprocess)
         end

@@ -46,8 +46,9 @@ end
 
 function StratificationOperation(b)
     grid = b.grid
+    loc  = location(b)
 
-    N2_op = KernelFunctionOperation{Center, Center, Face}(N²ᶜᶜᶠ, grid, b)
+    N2_op = KernelFunctionOperation{loc[1], loc[2], Face}(N²ᶜᶜᶠ, grid, b)
 
     return N2_op
 end
