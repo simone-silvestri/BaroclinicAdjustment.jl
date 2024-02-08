@@ -97,8 +97,8 @@ function eddy_eke(u, v, V)
     ū = mean(u, dims = 1)
     v̄ = mean(v, dims = 1)
 
-    u′ = u - ū
-    v′ = v - v̄
+    u′ = compute!(Field(u - ū))
+    v′ = compute!(Field(v - v̄))
 
     EKE = u′^2 + v′^2
 
@@ -110,7 +110,7 @@ function mean_ape(b, V)
     b̄ = mean(b, dims = 1)
     B = mean(b̄, dims = 2)
     
-    B̄  = b̄ - B
+    B̄  = compute!(Field(b̄ - B))
     N² = StratificationOperation(B)
 
     MAPE = B̄^2 / N²
@@ -123,10 +123,10 @@ function eddy_ape(b, V)
     b̄ = mean(b, dims = 1)
     B = mean(b̄, dims = 2)
     
-    B̄  = b̄ - B
+    B̄  = compute!(Field(b̄ - B))
     N² = StratificationOperation(B)
 
-    b′ = b - B̄
+    b′ = compute!(FIeld(b - B̄))
     EAPE = b′^2 / N²
 
     return  0.5 * sum(EAPE * V)
