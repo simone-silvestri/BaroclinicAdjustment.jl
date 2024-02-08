@@ -134,7 +134,11 @@ end
 
 function compute_energy_timeseries(f)
 
-    grid = f[:u].grid
+    u = f[:u]
+    v = f[:v]
+    b = f[:b]
+
+    grid = u.grid
     Vᶜᶜᶜ = VolumeField(grid)
     V̄ᶜᶜᶜ = sum(Vᶜᶜᶜ, dims = 1)
     Vᵗ   = sum(interior(V̄ᶜᶜᶜ))
@@ -319,7 +323,7 @@ function calculate_diagnostics(file_prefix::Vector = [],
             GC.gc(true)
             energy = compute_energy_diagnostics(fields, 50:lim)      
             GC.gc(true)
-            spectra  = compute_spectra(fields, 50:lim)
+            spectra = compute_spectra(fields, 50:lim)
             GC.gc(true)
             averages = compute_zonal_mean(fields, 50:lim)
             GC.gc(true)
