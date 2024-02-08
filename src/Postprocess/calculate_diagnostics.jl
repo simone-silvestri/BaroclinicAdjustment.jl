@@ -140,7 +140,7 @@ function compute_energy_timeseries(f)
     Vᵗ   = sum(interior(V̄ᶜᶜᶜ))
 
     MEKE = propagate(u, v, V̄ᶜᶜᶜ; func = (u, v, V) -> mean_eke(u, v, V) / Vᵗ)
-    EKE  = propagate(u, v, Vᶜᶜᶜ; func = (u, v, V) -> mean_eke(u, v, V) / Vᵗ)
+    EKE  = propagate(u, v, Vᶜᶜᶜ; func = (u, v, V) -> eddy_eke(u, v, V) / Vᵗ)
     MAPE = propagate(b, V̄ᶜᶜᶜ;    func = (b, V)    -> mean_ape(b, V) / Vᵗ)
     EAPE = propagate(b, Vᶜᶜᶜ;    func = (b, V)    -> eddy_ape(b, V) / Vᵗ)
 
