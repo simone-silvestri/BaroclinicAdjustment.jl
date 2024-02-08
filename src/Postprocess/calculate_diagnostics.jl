@@ -63,11 +63,11 @@ end
 
 add_trailing_name(name) = name * "_snapshots.jld2"
 
-function compute_energy_diagnostics(f::Dict, iterations; path = auxiliary_path)      
+function compute_energy_diagnostics(f::Dict, iterations)      
 
     KE = calculate_KE(f)
 
-    Etimeseries = compute_energy_timeseries(f; path)
+    Etimeseries = compute_energy_timeseries(f)
 
     E = FieldTimeSeries{Center, Center, Center}(f[:u].grid, f[:u].times[iterations])
 
