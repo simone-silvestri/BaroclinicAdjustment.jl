@@ -126,7 +126,7 @@ function eddy_ape(b, V)
     B̄  = compute!(Field(b̄ - B))
     N² = StratificationOperation(B)
 
-    b′ = compute!(FIeld(b - B̄))
+    b′ = compute!(Field(b - B̄))
     EAPE = b′^2 / N²
 
     return  0.5 * sum(EAPE * V)
