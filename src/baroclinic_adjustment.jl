@@ -68,7 +68,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                 longitude = (-10, 10),
                                 latitude = (φ₀-10, φ₀+10),
                                 z = (-Lz, 0),
-                                halo = (6, 6, 6)
+                                halo = (6, 6, 6))
     
     vertical_closure = VerticalScalarDiffusivity(FT; κ = 1e-5, ν = background_νz)
 
