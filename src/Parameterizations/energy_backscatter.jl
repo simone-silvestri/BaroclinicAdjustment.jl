@@ -34,6 +34,7 @@ struct EnergyBackScatter{FT} <: AbstractScalarDiffusivity{ExplicitTimeDiscretiza
     Cᴰ :: FT
     Uᵇ :: FT
     τ  :: FT
+    implicit_dissipation :: Bool
 end
 
 const EBS = EnergyBackScatter
@@ -43,7 +44,8 @@ EnergyBackScatter(FT::DataType = Float64;
                   C₂ = FT(-0.6), 
                   Cᴰ = FT(3e-2),
                   Uᵇ = FT(0.1),
-                  τ  = FT(1 / 45days)) = EnergyBackScatter(C₄, C₂, Cᴰ, Uᵇ, τ) 
+                  τ  = FT(1 / 45days),
+                  implicit_dissipation = true) = EnergyBackScatter(C₄, C₂, Cᴰ, Uᵇ, τ, implicit_dissipation) 
 
 DiffusivityFields(grid, tracer_names, bcs, ::EBS) = 
                     (; ν₂ = CenterField(grid),
@@ -55,6 +57,20 @@ DiffusivityFields(grid, tracer_names, bcs, ::EBS) =
 # For the moment just one!
 @inline shape_function(i, j, k, grid) = one(grid)
 
+@inline biharmonic_diffusion(i, j, k, grid, ::Val{true}, args...) = zero(grid)
+
+@inline function biharmonic_diffusion(i, j, k, grid, implicit_dissipation, u, v, closure) 
+    δ₁ = Dₛ(i, j, k, grid, u, v)    
+    δ₂ = ℑxyᶜᶜᵃ(i, j, k, grid, Dₜ, u, v)    
+
+    D_abs = sqrt(δ₁^2 + δ₂^2)
+    
+    C₄ = closure.C₄
+    τ  = closure.τ
+
+    return (C₄ * D_abs + τ) 
+end
+
 @kernel function _calculate_ebs_viscosities!(ν₂, ν₄, e, grid, closure, velocities, coriolis)
     i, j, k = @index(Global, NTuple)
     u, v, _ = velocities
@@ -63,17 +79,13 @@ DiffusivityFields(grid, tracer_names, bcs, ::EBS) =
     ϕ = shape_function(i, j, k, grid)
     C₂ = closure.C₂
 
-    δ₁ = Dₛ(i, j, k, grid, u, v)    
-    δ₂ = ℑxyᶜᶜᵃ(i, j, k, grid, Dₜ, u, v)    
+    @inbounds ν₄[i, j, k] = Δ^4 * biharmonic_diffusion(i, j, k, grid, Val(closure.implicit_dissipation), u, v, closure)
 
-    D_abs = sqrt(δ₁^2 + δ₂^2)
-    
-    C₄ = closure.C₄
-    τ  = closure.τ
-    u⁺ = @inbounds sqrt(2 * max(0, e[i, j, 1]))
     Lᵦ = sqrt(u⁺) * sqrt(1 / abs(∂yᶠᶜᶜ(i, j, k, grid, fᶠᶠᵃ, coriolis)))
-    
+        
     Lᵐⁱˣ = min(Δ, Lᵦ)
+
+    u⁺ = @inbounds sqrt(2 * max(0, e[i, j, 1]))
 
     ν₂_unbounded = C₂ * u⁺ * Lᵐⁱˣ * ϕ^2 
 
@@ -84,15 +96,14 @@ DiffusivityFields(grid, tracer_names, bcs, ::EBS) =
     ∂ʸu = ℑxyᶜᶜᵃ(i, j, k, grid, ∂yᶠᶠᶜ, u)
 
     bound = @inbounds 2 * e[i, j, 1] / sqrt(∂ˣu^2 + 0.5 * (∂ˣv + ∂ʸu)^2 + ∂ʸv^2)
-
     @inbounds ν₂[i, j, k] = max(ν₂_unbounded, - bound)
-    @inbounds ν₄[i, j, k] = (C₄ * D_abs + τ) * Δ^4 
 end
 
 function compute_diffusivities!(diffusivity_fields, closure::EBS, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
+    barotropic_velocities = (; u = model.free_surface.state.U̅, v = model.free_surface.state.V̅) 
     advection = model.advection.b
     coriolis = model.coriolis
     Δt = model.clock.time - diffusivity_fields.previous_compute_time[]
@@ -100,7 +111,7 @@ function compute_diffusivities!(diffusivity_fields, closure::EBS, model; paramet
 
     launch!(arch, grid, :xy, 
             _advance_tke!, diffusivity_fields,
-                           grid, model.clock, velocities, advection, 
+                           grid, model.clock, barotropic_velocities, velocities, advection, 
                            closure, Δt, Val(grid.Nz))
 
     launch!(arch, grid, parameters,
@@ -115,27 +126,44 @@ using Oceananigans.Operators
 
 @inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 
-@inline ∂u_τˣ₂(i, j, k, grid, u, args...) = ∂yᶠᶠᶜ(i, j, k, grid, u) * viscous_flux_uy(i, j, k, grid, args...)
-@inline ∂v_τʸ₁(i, j, k, grid, v, args...) = ∂xᶠᶠᶜ(i, j, k, grid, v) * viscous_flux_vx(i, j, k, grid, args...)
+@inline u_∂τˣ₂(i, j, k, grid, u, args...) = ∂yᶠᶠᶜ(i, j, k, grid, u) * viscous_flux_uy(i, j, k, grid, args...)
+@inline v_∂τʸ₁(i, j, k, grid, v, args...) = ∂xᶠᶠᶜ(i, j, k, grid, v) * viscous_flux_vx(i, j, k, grid, args...)
 
-@inline ∂u_τˣ₁(i, j, k, grid, u, args...) = ∂xᶜᶜᶜ(i, j, k, grid, u) * viscous_flux_ux(i, j, k, grid, args...)
-@inline ∂v_τʸ₂(i, j, k, grid, v, args...) = ∂yᶜᶜᶜ(i, j, k, grid, v) * viscous_flux_vy(i, j, k, grid, args...)
+@inline u_∂τˣ₁(i, j, k, grid, u, args...) = ∂xᶜᶜᶜ(i, j, k, grid, u) * viscous_flux_ux(i, j, k, grid, args...)
+@inline v_∂τʸ₂(i, j, k, grid, v, args...) = ∂yᶜᶜᶜ(i, j, k, grid, v) * viscous_flux_vy(i, j, k, grid, args...)
 
-@kernel function _advance_tke!(diffusivities, grid, clock, velocities, advection, closure, Δt, ::Val{Nz}) where Nz
+@inline u_times_U_dot_∇u(i, j, k, grid, scheme, U) = @inbounds velocities.u[i, j, k] * U_dot_∇u(i, j, k, grid, scheme, U)
+@inline v_times_U_dot_∇v(i, j, k, grid, scheme, U) = @inbounds velocities.v[i, j, k] * U_dot_∇v(i, j, k, grid, scheme, U)
+
+@inline implicit_dissipation(i, j, k, grid, scheme, U, ::Val{false}) = zero(grid)
+
+@inline function implicit_dissipation(i, j, k, grid, scheme, U, args...) 
+    εˣ = ℑxᶜᵃᵃ(i, j, k, grid, u_times_U_dot_∇u, scheme, U)
+    εʸ = ℑyᵃᶜᵃ(i, j, k, grid, v_times_U_dot_∇v, scheme, U)
+
+    return εˣ + εʸ
+end
+
+@kernel function _advance_tke!(diffusivities, grid, clock, barotropic_velocities, velocities, advection, closure, Δt, ::Val{Nz}) where Nz
     i, j  = @index(Global, NTuple)
     u, v, _ = velocities
 
     εˣ = zero(grid)
     εʸ = zero(grid)
 
+    εⁱ = zero(grid)
+
     @unroll for k in 1:Nz
-        
         Δz = Δzᶜᶜᶜ(i, j, k, grid) / grid.Lz
         
         args = (closure, diffusivities, clock, velocities, nothing)
 
-        εˣ += Δz * (∂u_τˣ₁(i, j, k, grid, u, args...) + ℑxyᶜᶜᵃ(i, j, k, grid, ∂u_τˣ₂, u, args...))
-        εʸ += Δz * (∂v_τʸ₂(i, j, k, grid, v, args...) + ℑxyᶜᶜᵃ(i, j, k, grid, ∂v_τʸ₁, v, args...))
+        εˣ += Δz * (u_∂τˣ₁(i, j, k, grid, u, args...) + ℑxyᶜᶜᵃ(i, j, k, grid, u_∂τˣ₂, u, args...))
+        εʸ += Δz * (v_∂τʸ₂(i, j, k, grid, v, args...) + ℑxyᶜᶜᵃ(i, j, k, grid, v_∂τʸ₁, v, args...))
+
+        args = (velocities, nothing)
+
+        εⁱ += Δz * implicit_dissipation(i, j, k, grid, Val(closure.implicit_dissipation), advection, velocities)
     end
 
     FT = eltype(grid)
@@ -151,7 +179,7 @@ using Oceananigans.Operators
 
     implicit_bottom_friction = @inbounds Cᴰ * sqrt(s² + e[i, j, 1] + closure.Uᵇ^2) 
 
-    Gⁿ = - div_Uc(i, j, 1, grid, advection, velocities, e) - (εˣ + εʸ)
+    Gⁿ = - div_Uc(i, j, 1, grid, advection, barotropic_velocities, e) - (εˣ + εʸ + εⁱ)
 
     #  - bottom_friction + 
     @inbounds e[i, j, 1]  = (e[i, j, 1] + Δt * (α * Gⁿ - β * G⁻[i, j, 1])) / (1 + Δt * implicit_bottom_friction)
