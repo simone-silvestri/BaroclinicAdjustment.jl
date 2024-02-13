@@ -1,6 +1,6 @@
 using Oceananigans.Units
 using Oceananigans.Operators
-using Oceananigans.Advection: div_Uc
+using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v 
 using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.TurbulenceClosures: 
                     biharmonic_mask_x, 
