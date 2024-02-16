@@ -36,6 +36,7 @@ function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.75)
 end
 
 include("Parameterizations/Parameterizations.jl")
+include("estimate_implicit_dissipation.jl")
 include("outputs.jl")
 include("baroclinic_adjustment.jl")
 include("Diagnostics/Diagnostics.jl")

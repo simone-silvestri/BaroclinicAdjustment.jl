@@ -69,15 +69,29 @@ function checkpoint_outputs!(simulation, output_prefix; overwrite_existing = tru
     return nothing
 end
 
-function reduced_outputs!(simulation, output_prefix; overwrite_existing = true, 
-                                                     snapshot_time      = 5days)
+function reduced_outputs!(simulation, output_prefix; overwrite_existing   = true, 
+                                                     snapshot_time        = 5days,
+                                                     estimate_dissipation = false)
 
     model = simulation.model
 
-    u, v, w = model.velocities
+    u, v, w   = model.velocities
+
     b = model.tracers.b
 
     output_fields = (; u, v, w, b)
+
+    if estimate_dissipation
+        simulation.callbacks[:compute_χ]     = Callback(compute_χ_values,      TimeInterval(snapshot_time))
+        simulation.callbacks[:update_values] = Callback(update_previous_values, IterationInterval(1))
+
+        χ = model.auxiliary_fields.χ
+        simulation.output_writers[:dissipation] = JLD2OutputWriter(model, χ;
+                                                                   schedule = TimeInterval(snapshot_time),
+                                                                   filename = output_prefix * "_snapshots",
+                                                                   overwrite_existing,
+                                                                   array_type = Array{Float32})
+    end
 
     simulation.output_writers[:snapshots] = JLD2OutputWriter(model, output_fields;
                                                                 schedule = ConsecutiveIterations(TimeInterval(snapshot_time)),

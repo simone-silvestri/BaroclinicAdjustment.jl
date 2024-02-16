@@ -53,7 +53,8 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                           buoyancy_forcing_timescale = 50days,
                                           background_νz = 1e-4,
                                           φ₀ = - 50,
-                                          stop_time = 1000days)
+                                          stop_time = 1000days,
+                                          estimate_dissipation = false)
     
     # Domain
     Lz = 1kilometers     # depth [m]
@@ -102,6 +103,16 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
         forcing = (; b = bf, u = uf, v = vf)
     else 
         forcing = NamedTuple()
+    end
+
+    if estimate_dissipation
+        bⁿ⁻¹ = CenterField(grid)
+        Uⁿ⁻¹ = VelocityFields(grid)
+        χ    = VelocityFields(grid)
+
+        auxiliary_fields = (; χ, bⁿ⁻¹, Uⁿ⁻¹)
+    else
+        auxiliary_fields = NamedTuple()
     end
 
     model = HydrostaticFreeSurfaceModel(; grid,
@@ -169,7 +180,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
         simulation.callbacks[:update_mean_values] = Callback(update_mean_values, IterationInterval(10))
     end
     
-    reduced_outputs!(simulation, filename)
+    reduced_outputs!(simulation, filename; estimate_dissipation)
 
     return simulation
 end
