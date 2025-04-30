@@ -10,7 +10,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids: architecture
 using Oceananigans.Fields: boundary_conditions, indices, location, total_size, offset_data
-using Oceananigans.OutputReaders: InMemoryFieldTimeSeries, OnDiskFieldTimeSeries
+using Oceananigans.OutputReaders
 
 import Oceananigans.Fields: set!, AbstractField
 import Oceananigans.AbstractOperations: restrict_index_for_interpolation
@@ -57,23 +57,7 @@ function propagate(fields...; func, path = nothing, name = nothing)
 
     return field_output
 end
-
-import Oceananigans.Fields: set!
-using Oceananigans.OutputReaders: initialize_file!, maybe_write_property!
  
-# When we set! a OnDiskFieldTimeSeries we automatically write down the memory path
-function set!(time_series::OnDiskFieldTimeSeries, f::AbstractOperation, index::Int)
-    path = time_series.path
-    name = time_series.name
-    
-    b = compute!(Field(f))
-    jldopen(path, "a+") do file
-        initialize_file!(file, name, time_series)
-        maybe_write_property!(file, "timeseries/t/$index", time_series.times[index])
-        maybe_write_property!(file, "timeseries/$(name)/$(index)", Array(parent(b)))
-    end
-end
-
 retrieve_operand(f::Number, i)          = f
 retrieve_operand(f::Field, i)           = f
 retrieve_operand(f::FieldTimeSeries, i) = f[i]

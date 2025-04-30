@@ -42,7 +42,7 @@ import Oceananigans.TurbulenceClosures:
 using Oceananigans.Utils: launch!
 using Oceananigans.Coriolis: fᶠᶠᵃ
 using Oceananigans.Operators
-using Oceananigans.BuoyancyModels: ∂x_b, ∂y_b, ∂z_b 
+using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b 
 
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: HorizontalFormulation
