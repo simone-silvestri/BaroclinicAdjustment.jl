@@ -28,7 +28,7 @@ using Oceananigans.TurbulenceClosures:
 
 import Oceananigans.TurbulenceClosures:
         compute_diffusivities!,
-        DiffusivityFields,
+        build_diffusivity_fields,
         viscosity, 
         diffusivity,
         diffusive_flux_x,

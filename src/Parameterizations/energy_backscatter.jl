@@ -48,7 +48,7 @@ EnergyBackScatter(FT::DataType = Float64;
                   τ  = FT(1 / 45days),
                   implicit_dissipation = true) = EnergyBackScatter(C₄, C₂, Cᴰ, Uᵇ, τ, implicit_dissipation) 
 
-DiffusivityFields(grid, tracer_names, bcs, ::EBS) = 
+build_diffusivity_fields(grid, clock, tracer_names, bcs, ::EBS) = 
                     (; ν₂ = CenterField(grid),
                        ν₄ = CenterField(grid), 
                        e  = Field((Center, Center, Nothing), grid),

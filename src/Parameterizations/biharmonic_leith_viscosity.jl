@@ -19,7 +19,7 @@ end
 
 BiharmonicLeith(FT::DataType = Float64; C=FT(2.0)) = BiharmonicLeith(C) 
 
-DiffusivityFields(grid, tracer_names, bcs, ::BiharmonicLeith) = 
+build_diffusivity_fields(grid, clock, tracer_names, bcs, ::BiharmonicLeith) = 
                 (; νₑ = CenterField(grid))
 
 @kernel function _calculate_biharmonicleith_viscosity!(ν, grid, closure, fields)

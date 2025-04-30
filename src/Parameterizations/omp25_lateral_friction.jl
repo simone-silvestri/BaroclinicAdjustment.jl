@@ -31,7 +31,7 @@ const OMP = OMp25Closure
 OMp25Closure(FT::DataType = Float64; C₄ = FT(0.06), u₄ = FT(0.01), C₂ = FT(0.15), u₂ = FT(0.01)) = 
         OMp25Closure(C₄, u₄, C₂, u₂) 
 
-DiffusivityFields(grid, tracer_names, bcs, ::OMp25Closure) = 
+build_diffusivity_fields(grid, clock, tracer_names, bcs, ::OMp25Closure) = 
                 (; ν₂ = CenterField(grid),
                    ν₄ = CenterField(grid), 
                    Ld = Field{Center, Center, Nothing}(grid))

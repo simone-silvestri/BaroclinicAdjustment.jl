@@ -26,7 +26,7 @@ end
 QGLeith(FT::DataType = Float64; C=FT(1.0), min_N² = FT(1e-20), isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=FluxTapering(1e-2)) =
     QGLeith(C, min_N², isopycnal_model, slope_limiter) 
 
-DiffusivityFields(grid, tracer_names, bcs, ::QGLeith) = 
+build_diffusivity_fields(grid, clock, tracer_names, bcs, ::QGLeith) = 
                 (; νₑ = CenterField(grid),
                    Ld = Field{Center, Center, Nothing}(grid))
 

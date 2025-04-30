@@ -5,7 +5,7 @@ end
 
 Smagorisky(FT::DataType = Float64; C = FT(0.15)) = Smagorinsky(C)
 
-DiffusivityFields(grid, tracer_names, bcs, ::Smagorinsky) = 
+build_diffusivity_fields(grid, clock, tracer_names, bcs, ::Smagorinsky) = 
                 (; νₑ = CenterField(grid))
 
 
