@@ -33,17 +33,17 @@ function standard_outputs!(simulation, output_prefix; overwrite_existing = true,
 
     average_fields  = (; u, v, w, b, ζ, ζ2, u2, v2, w2, b2, ub, vb, wb)
 
-    simulation.output_writers[:snapshots] = JLD2OutputWriter(model, output_fields;
+    simulation.output_writers[:snapshots] = JLD2Writer(model, output_fields;
                                                              schedule = ConsecutiveIterations(TimeInterval(snapshot_time)),
                                                              filename = output_prefix * "_snapshots",
                                                              overwrite_existing)
 
-    simulation.output_writers[:snapshots] = JLD2OutputWriter(model, average_fields;
+    simulation.output_writers[:snapshots] = JLD2Writer(model, average_fields;
                                                              schedule = AveragedTimeInterval(average_time, stride = 10),
                                                              filename = output_prefix * "_averages",
                                                              overwrite_existing)
 
-    simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, output_fields;
+    simulation.output_writers[:surface_fields] = JLD2Writer(model, output_fields;
                                                                   schedule = TimeInterval(surface_time),
                                                                   filename = output_prefix * "_surface",
                                                                   indices = (:, :, grid.Nz),
@@ -79,7 +79,7 @@ function reduced_outputs!(simulation, output_prefix; overwrite_existing = true,
 
     output_fields = (; u, v, w, b)
 
-    simulation.output_writers[:snapshots] = JLD2OutputWriter(model, output_fields;
+    simulation.output_writers[:snapshots] = JLD2Writer(model, output_fields;
                                                                 schedule = ConsecutiveIterations(TimeInterval(snapshot_time)),
                                                                 filename = output_prefix * "_snapshots",
                                                                 overwrite_existing,

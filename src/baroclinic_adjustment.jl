@@ -153,16 +153,14 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
 
     function print_progress(sim)
 
-        e = maximum(sim.model.diffusivity_fields[2].e)
-        
-        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, e: %6.3e, next Δt: %s\n",
+        @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
                 100 * (sim.model.clock.time / sim.stop_time),
                 sim.model.clock.iteration,
                 prettytime(sim.model.clock.time),
                 prettytime(1e-9 * (time_ns() - wall_clock[1])),
                 maximum(abs, sim.model.velocities.u),
                 maximum(abs, sim.model.velocities.v),
-                maximum(abs, sim.model.velocities.w), e,
+                maximum(abs, sim.model.velocities.w), 
                 prettytime(sim.Δt))
 
         wall_clock[1] = time_ns()
