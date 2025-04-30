@@ -1,4 +1,6 @@
 using Oceananigans.Coriolis: hack_sind
+using Oceananigans.Grids
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ZStar
 using Statistics
 
 @inline function buoyancy_forcing(i, j, k, grid, clock, fields, p)
@@ -39,10 +41,11 @@ function baroclinic_adjustment_simulation(testcase::TestCase, resolution, traili
     name = testcase.n * trailing
     momentum_advection = testcase.a
     horizontal_closure = testcase.h
+    timestepper = testcase.t
 
-    @info "Running case $name with" momentum_advection horizontal_closure
+    @info "Running case $name with" momentum_advection horizontal_closure timestepper
 
-    return baroclinic_adjustment_simulation(resolution, name; momentum_advection, horizontal_closure, kwargs...)
+    return baroclinic_adjustment_simulation(resolution, name; momentum_advection, timestepper, horizontal_closure, kwargs...)
 end
 
 function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = Float64; 
@@ -52,6 +55,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                           tracer_advection = WENO(FT; order = 7),
                                           auxiliary_fields = NamedTuple(),
                                           buoyancy_forcing_timescale = 50days,
+                                          timestepper = :QuasiAdamsBashforth2,
                                           background_νz = 1e-4,
                                           φ₀ = - 50,
                                           stop_time = 1000days)
@@ -63,14 +67,14 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
     Δt = 2.5minutes
 
     grid = LatitudeLongitudeGrid(arch, FT;
-                                topology = (Periodic, Bounded, Bounded),
-                                size = (Ny, Ny, Nz), 
-                                longitude = (-10, 10),
-                                latitude = (φ₀-10, φ₀+10),
-                                z = (-Lz, 0),
-                                halo = (6, 6, 6))
+                                 topology = (Periodic, Bounded, Bounded),
+                                 size = (Ny, Ny, Nz), 
+                                 longitude = (-10, 10),
+                                 latitude = (φ₀-10, φ₀+10),
+                                 z = MutableVerticalDiscretization((-Lz, 0)),
+                                 halo = (6, 6, 6))
     
-    vertical_closure = VerticalScalarDiffusivity(FT; κ = 1e-5, ν = background_νz)
+    vertical_closure = VerticalScalarDiffusivity(FT; κ=1e-5, ν=background_νz)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
 
@@ -91,7 +95,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                coriolis,
                R = grid.radius)
 
-    free_surface = SplitExplicitFreeSurface(FT; grid, cfl = 0.75, fixed_Δt = 20minutes)
+    free_surface = SplitExplicitFreeSurface(grid; cfl=0.7)
     @info "Building a model..."
 
     if !isnothing(buoyancy_forcing_timescale)
@@ -113,7 +117,9 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                           momentum_advection,
                                           tracer_advection,
                                           auxiliary_fields,
+                                          timestepper,
                                           forcing,
+                                          vertical_coordinate = ZStar(),
                                           free_surface)
 
     ϵb = 1e-2 * Δb # noise amplitude

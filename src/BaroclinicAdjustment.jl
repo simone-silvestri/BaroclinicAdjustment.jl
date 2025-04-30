@@ -19,20 +19,11 @@ using KernelAbstractions: @kernel, @index
 using JLD2
 using Random
 
-struct TestCase{A, H, N}
+struct TestCase{A, H, N, T}
     a :: A # momentum advection scheme
     h :: H # lateral friction
     n :: N # name
-end
-
-function barotropic_substeps(Δt, grid, gravitational_acceleration; CFL = 0.75)
-    wave_speed = sqrt(gravitational_acceleration * grid.Lz)
-    
-    Δx = minimum_xspacing(grid)
-    Δy = minimum_yspacing(grid)
-    Δ  = 1 / sqrt(1 / Δx^2 + 1 / Δy^2)
-
-    return  Base.Int(ceil(2 * Δt / (CFL / wave_speed * Δ)))
+    t :: T # timestepper
 end
 
 include("Parameterizations/Parameterizations.jl")
