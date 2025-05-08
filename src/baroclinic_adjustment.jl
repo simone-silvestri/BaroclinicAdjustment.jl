@@ -64,7 +64,11 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
     Lz = 1kilometers     # depth [m]
     Ny = Base.Int(20 / resolution)
     Nz = 50
-    Δt = 2.5minutes
+    Δt = if timestepper == :QuasiAdamsBashforth2
+        5minutes
+    else
+        15minutes
+    end
 
     grid = LatitudeLongitudeGrid(arch, FT;
                                  topology = (Periodic, Bounded, Bounded),
@@ -137,9 +141,9 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
     simulation = Simulation(model; Δt, stop_time)
 
     # add timestep wizard callback
-    max_Δt = resolution < 1/20 ? 8minutes : 20minutes
-    wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt, min_Δt = 15)
-    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+    # max_Δt = resolution < 1/20 ? 8minutes : 20minutes
+    # wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt, min_Δt = 15)
+    # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     function update_mean_values(sim)
         sim.model.forcing.b.parameters.B .= mean(sim.model.tracers.b,    dims = 1)
