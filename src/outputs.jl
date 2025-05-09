@@ -70,19 +70,27 @@ function checkpoint_outputs!(simulation, output_prefix; overwrite_existing = tru
 end
 
 function reduced_outputs!(simulation, output_prefix; overwrite_existing = true, 
-                                                     snapshot_time      = 5days)
+                                                     snapshot_time      = 2days)
 
     model = simulation.model
 
     u, v, w = model.velocities
     b = model.tracers.b
+    Δz = zspacings(model.grid)
 
-    output_fields = (; u, v, w, b)
+    output_fields = (; u, v, w, b, Δz)
 
     simulation.output_writers[:snapshots] = JLD2Writer(model, output_fields;
-                                                                schedule = ConsecutiveIterations(TimeInterval(snapshot_time)),
-                                                                filename = output_prefix * "_snapshots",
-                                                                overwrite_existing,
-                                                                array_type = Array{Float32})
+                                                       schedule = TimeInterval(snapshot_time),
+                                                       filename = output_prefix * "_snapshots",
+                                                       overwrite_existing,
+                                                       array_type = Array{Float32})
+
+    simulation.output_writers[:free_surface] = JLD2Writer(model, (; η = model.free_surface.η);
+                                                          schedule = TimeInterval(snapshot_time),
+                                                          filename = output_prefix * "_free_surface",
+                                                          overwrite_existing,
+                                                          array_type = Array{Float32})
+    return nothing
 end                                                 
 
