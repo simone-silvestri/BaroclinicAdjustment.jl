@@ -68,7 +68,7 @@ end
 
 function gaussian_ridge(Lz, φ₀)
     function immersed_bottom(x, y)
-        return - Lz + exp(- ((y - φ₀)^2) / 2.5^2) * Lz / 2
+        return - Lz + exp(- (((y - 10) - φ₀)^2) / 2.5^2) * Lz + exp(- (((y + 10) - φ₀)^2) / 2.5^2) * Lz
     end
 
     return immersed_bottom
