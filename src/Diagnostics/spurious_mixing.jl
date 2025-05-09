@@ -2,19 +2,26 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 using Oceananigans.Grids: architecture, znode
 using Oceananigans.Architectures: device, on_architecture
 
-function calculate_z★_diagnostics(b::FieldTimeSeries)
+function calculate_z★_diagnostics(b::FieldTimeSeries; path = nothing)
 
     times = b.times
 
+    if path isa Nothing
+        path = b.path
+    end
+
     vol = VolumeField(b.grid)
-    z★  = FieldTimeSeries{Center, Center, Center}(b.grid, b.times)
+    z★  = FieldTimeSeries{Center, Center, Center}(b.grid, b.times; backend = OnDisk(), path, name = "z★")
 
     total_area = sum(AreaField(b.grid))
     
-    for iter in 1:length(times)
-       @info "time $iter of $(length(times))"
+    z★t = CenterField(b.grid)
 
-       calculate_z★!(z★[iter], b[iter], vol, total_area)
+    for iter in 1:length(times)
+        @info "time $iter of $(length(times))"
+
+        calculate_z★!(z★t, b[iter], vol, total_area)
+        set!(z★, z★t, iter)
     end
         
     return z★

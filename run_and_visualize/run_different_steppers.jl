@@ -2,7 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Advection: EnergyConserving, DefaultStencil, OnlySelfUpwinding
 using BaroclinicAdjustment
-# using BaroclinicAdjustment.PostProcess
+using BaroclinicAdjustment.Postprocess
 using BaroclinicAdjustment.Parameterizations
 
 ####
@@ -44,18 +44,20 @@ all_tests = (omp25AB2_test,
 #### Let's run an postprocess!
 ####
 
-for test in all_tests    
+for test in all_tests, immersed in (true, false)   
    # Define the simulation
-   # simulation = BaroclinicAdjustment.baroclinic_adjustment_simulation(test, 1/16, "_sixteen"; 
-   #                                                                    arch = GPU(),
-   #                                                                    buoyancy_forcing_timescale = nothing,
-   #                                                                    stop_time = 500days)
+   suffix = ifelse(immersed, "immersed", "flat")
+   simulation = BaroclinicAdjustment.baroclinic_adjustment_simulation(test, 1/16, "_sixteen_$(suffix)"; 
+                                                                      arch=GPU(),
+                                                                      immersed, 
+                                                                      buoyancy_forcing_timescale=nothing,
+                                                                      stop_time=1000days)
    
-   # # Let's run
-   # run!(simulation)
+   # Let's run
+   run!(simulation)
 
    # Postprocessing the outputs
-   Postprocess.calculate_diagnostics(test, "_sixteen")
+   # Postprocess.calculate_diagnostics(test, "_sixteen")
 end
 
 

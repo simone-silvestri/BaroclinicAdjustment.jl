@@ -48,10 +48,42 @@ function baroclinic_adjustment_simulation(testcase::TestCase, resolution, traili
     return baroclinic_adjustment_simulation(resolution, name; momentum_advection, timestepper, horizontal_closure, kwargs...)
 end
 
+@inline u_drag_bc(i, j, grid, clock, fields, C) = - C * fields.u[i, j, 1]
+@inline v_drag_bc(i, j, grid, clock, fields, C) = - C * fields.v[i, j, 1]
+
+@inline u_immersed_drag_bc(i, j, k, grid, clock, fields, C) = - C * fields.u[i, j, k]
+@inline v_immersed_drag_bc(i, j, k, grid, clock, fields, C) = - C * fields.v[i, j, k]
+
+function u_bottom_drag()
+    u_drag = FluxBoundaryCondition(u_drag_bc, discrete_form=true, parameters=5e-3)
+    u_immersed_drag = FluxBoundaryCondition(u_immersed_drag_bc, discrete_form=true, parameters=5e-3)
+    return FieldBoundaryConditions(bottom = u_drag, immersed = u_immersed_drag)
+end
+
+function v_bottom_drag()
+    v_drag = FluxBoundaryCondition(v_drag_bc, discrete_form=true, parameters=5e-3)
+    v_immersed_drag = FluxBoundaryCondition(v_immersed_drag_bc, discrete_form=true, parameters=5e-3)
+    return FieldBoundaryConditions(bottom = v_drag, immersed = v_immersed_drag)
+end
+
+function gaussian_ridge(Lz, φ₀)
+    function immersed_bottom(x, y)
+        return - Lz + exp(- ((y - φ₀)^2) / 2.5^2) * Lz / 2
+    end
+
+    return immersed_bottom
+end
+
+function add_immersed_boundary(grid, Lz, φ₀)
+    immersed_boundary = GridFittedBottom(gaussian_ridge(Lz, φ₀))
+    return ImmersedBoundaryGrid(grid, immersed_boundary; active_cells_map = true)
+end
+
 function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = Float64; 
                                           arch = GPU(), 
                                           horizontal_closure = nothing,
                                           momentum_advection = VectorInvariant(), 
+                                          immersed = false,
                                           tracer_advection = WENO(FT; order = 7),
                                           auxiliary_fields = NamedTuple(),
                                           buoyancy_forcing_timescale = 50days,
@@ -78,6 +110,10 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                  z = MutableVerticalDiscretization((-Lz, 0)),
                                  halo = (6, 6, 6))
     
+    if immersed
+        grid = add_immersed_boundary(grid, Lz, φ₀)
+    end
+
     vertical_closure = VerticalScalarDiffusivity(FT; κ=1e-5, ν=background_νz)
 
     closures = isnothing(horizontal_closure) ? vertical_closure : (vertical_closure, horizontal_closure)
@@ -99,7 +135,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                coriolis,
                R = grid.radius)
 
-    free_surface = SplitExplicitFreeSurface(grid; cfl=0.7)
+    free_surface = SplitExplicitFreeSurface(grid; cfl=0.7, fixed_Δt=Δt)
     @info "Building a model..."
 
     if !isnothing(buoyancy_forcing_timescale)
@@ -109,8 +145,10 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
         uf = Forcing(u_velocity_forcing; discrete_form=true, parameters=param)
         vf = Forcing(v_velocity_forcing; discrete_form=true, parameters=param)
         forcing = (; b = bf, u = uf, v = vf)
+        boundary_conditions = NamedTuple()
     else 
         forcing = NamedTuple()
+        boundary_conditions=(u=u_bottom_drag(), v=v_bottom_drag())
     end
 
     model = HydrostaticFreeSurfaceModel(; grid,
@@ -123,6 +161,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                           auxiliary_fields,
                                           timestepper,
                                           forcing,
+                                          boundary_conditions,
                                           vertical_coordinate = ZStar(),
                                           free_surface)
 
@@ -139,11 +178,6 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
     #####
 
     simulation = Simulation(model; Δt, stop_time)
-
-    # add timestep wizard callback
-    # max_Δt = resolution < 1/20 ? 8minutes : 20minutes
-    # wizard = TimeStepWizard(cfl=0.1; max_change=1.1, max_Δt, min_Δt = 15)
-    # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     function update_mean_values(sim)
         sim.model.forcing.b.parameters.B .= mean(sim.model.tracers.b,    dims = 1)
