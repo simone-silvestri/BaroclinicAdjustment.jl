@@ -108,7 +108,7 @@ function baroclinic_adjustment_simulation(resolution, filename, FT::DataType = F
                                  longitude = (-10, 10),
                                  latitude = (φ₀-10, φ₀+10),
                                  z = MutableVerticalDiscretization((-Lz, 0)),
-                                 halo = (6, 6, 6))
+                                 halo = (7, 7, 7))
     
     if immersed
         grid = add_immersed_boundary(grid, Lz, φ₀)
