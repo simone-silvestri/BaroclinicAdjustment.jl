@@ -18,7 +18,28 @@ Base.abs(s::Spectrum)  = Spectrum( abs.(s.spec), s.freq)
 @inline onefunc(args...)  = 1.0
 @inline hann_window(n, N) = sin(π * n / N)^2 
 
-function average_spectra(var::FieldTimeSeries, xlim, ylim; k = 69, spectra = power_spectrum_1d_x, windowing = onefunc)
+function y_average_spectra(var::FieldTimeSeries, xlim, ylim, tlim; k = 50, spectra = power_spectrum_1d_x, windowing = onefunc)
+
+    xdomain = xnodes(var[tlim[1]])[xlim]
+    ydomain = ynodes(var[tlim[1]])[ylim]
+
+    Nt = length(tlim)
+
+    spec = spectra(interior(var[tlim[1]], xlim, ylim[1], k), xdomain; windowing) 
+
+    for t in tlim[2:end]
+        for j in ylim[2:end]
+            @info "doing time $t, y $j"
+            spec.spec .+= spectra(interior(var[t], xlim, j, k), xdomain; windowing).spec 
+        end
+    end
+
+    spec.spec .*= 1 / (Nt * length(ylim))
+
+    return spec
+end
+
+function average_spectra(var::FieldTimeSeries, xlim, ylim; k = 50, spectra = power_spectrum_1d_x, windowing = onefunc)
 
     xdomain = xnodes(var[1])[xlim]
     ydomain = ynodes(var[1])[ylim]
